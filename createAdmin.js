@@ -15,9 +15,8 @@ dotenv.config();
       process.exit(1);
     }
 
-    await connectDB(); // MongoDB Atlas / local
+    await connectDB();
 
-    // Agar admin mavjud bo‘lsa, eski adminni o‘chirib, yangisini yaratamiz
     const allAdmins = await Admin.find();
     if (allAdmins.length > 0) {
       console.log("⚠️ Eski admin topildi, o‘chirilmoqda...".yellow);
