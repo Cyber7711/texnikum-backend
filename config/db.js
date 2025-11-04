@@ -4,7 +4,7 @@ const mongoose = require("mongoose");
 const connectDB = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI);
-    console.log("Mongo ulandi".blue);
+    console.log("Mongo ulandi".red);
   } catch (error) {
     console.error("Mongo ulanishida xatolik", error.message, red);
     process.exit(1);

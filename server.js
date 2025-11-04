@@ -48,8 +48,10 @@ for (const file of filtered) {
 const limiter = rateLimit({
   max: 100,
   windowMs: 60 * 60 * 1000,
-  message: "Juda kop surovlar yuborildi, Keyinroq qayta urinib koring".red,
+  keyGenerator: (req) => req.ip,
+  message: "Juda kop surovlar yuborildi",
 });
+
 app.use("/api", limiter);
 
 app.set("trust proxy", 1);
