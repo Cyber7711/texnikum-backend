@@ -1,16 +1,12 @@
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
+const colors = require("colors");
 const Admin = require("./models/admin");
-const connectDB = require("./config/db");
+const connectDB = require("./config/db"); // avval sizning connectDB faylingiz
+
 dotenv.config();
 
-if (!process.env.MONGO_URI) {
-  console.error("❌ MONGO_URI .env faylida topilmadi".red);
-  process.exit(1);
-}
-
-//  (async IIFE)
-async () => {
+(async () => {
   try {
     const [username, password] = process.argv.slice(2);
 
@@ -19,23 +15,25 @@ async () => {
       process.exit(1);
     }
 
-    await connectDB();
+    await connectDB(); // MongoDB Atlas / local
 
+    // Agar admin mavjud bo‘lsa, eski adminni o‘chirib, yangisini yaratamiz
     const allAdmins = await Admin.find();
     if (allAdmins.length > 0) {
       console.log("⚠️ Eski admin topildi, o‘chirilmoqda...".yellow);
       await Admin.deleteMany({});
       console.log("🗑️ Eski admin(lar) o‘chirildi.".red);
     }
+
     const admin = await Admin.create({ username, password });
     console.log(`✅ Yangi admin yaratildi: ${admin.username}`.green);
 
     await mongoose.connection.close();
-    console.log("🔌 Ulanish yopildi".yellow);
+    console.log("🔌 MongoDB ulanishi yopildi".yellow);
 
     process.exit(0);
   } catch (err) {
-    console.error("Xato:", err.message || err);
+    console.error("❌ Xato:", err.message || err);
     process.exit(1);
   }
-};
+})();

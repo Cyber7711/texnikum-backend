@@ -13,6 +13,7 @@ const AppError = require("./utils/appError");
 
 dotenv.config();
 connectDB();
+app.set("trust proxy", 1);
 
 const app = express();
 app.use(express.json({ limit: "10kb" }));
@@ -44,8 +45,6 @@ for (const file of filtered) {
   const route = require(path.join(routesPath, file));
   app.use(`/${routeName}`, route);
 }
-
-app.set("trust proxy", 1);
 
 const limiter = rateLimit({
   max: 100,
