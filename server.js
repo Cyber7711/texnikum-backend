@@ -45,6 +45,8 @@ for (const file of filtered) {
   app.use(`/${routeName}`, route);
 }
 
+app.set("trust proxy", 1);
+
 const limiter = rateLimit({
   max: 100,
   windowMs: 60 * 60 * 1000,
