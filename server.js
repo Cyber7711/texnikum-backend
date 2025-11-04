@@ -13,7 +13,6 @@ const AppError = require("./utils/appError");
 
 dotenv.config();
 connectDB();
-app.set("trust proxy", 1);
 
 const app = express();
 app.use(express.json({ limit: "10kb" }));
@@ -52,6 +51,8 @@ const limiter = rateLimit({
   message: "Juda kop surovlar yuborildi, Keyinroq qayta urinib koring".red,
 });
 app.use("/api", limiter);
+
+app.set("trust proxy", 1);
 
 const authLimiter = rateLimit({
   max: 5,
