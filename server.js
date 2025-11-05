@@ -10,6 +10,7 @@ const hpp = require("hpp");
 const globalErrorHandler = require("./controllers/errorController");
 const authRoutes = require("./routes/authRoutes");
 const AppError = require("./utils/appError");
+const { swaggerUi, swaggerSpec } = require("./swagger");
 
 dotenv.config();
 connectDB();
@@ -25,7 +26,7 @@ app.use(
     credentials: true,
   })
 );
-
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use(hpp());
 app.use(
   helmet({
