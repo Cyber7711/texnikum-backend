@@ -1,4 +1,4 @@
-const { red } = require("colors");
+const { red, blue, bgGreen } = require("colors");
 const mongoose = require("mongoose");
 
 const connectDB = async () => {
@@ -10,7 +10,7 @@ const connectDB = async () => {
     });
     console.log("Mongo ulandi".red);
   } catch (error) {
-    console.error("Mongo ulanishida xatolik", error.message, red);
+    console.error("Mongo ulanishida xatolik", error.message, bgGreen);
     process.exit(1);
   }
 };

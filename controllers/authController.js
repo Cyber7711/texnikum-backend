@@ -12,6 +12,8 @@ exports.login = async (req, res, next) => {
   try {
     const { username, password } = req.body;
 
+    console.log("🧠 Login kelib tushdi:", req.body);
+
     const admin = await Admin.findOne({ username }).select("+password");
     if (!admin) return res.status(404).json({ message: "Admin topilmadi" });
 
@@ -29,7 +31,6 @@ exports.login = async (req, res, next) => {
       message: "Kirish muvaffaqiyatli",
       token,
     });
-    console.log("🧠 Login kelib tushdi:", req.body);
   } catch (err) {
     console.error("❌ Login error:", err);
     res.status(500).json({ message: err.message });
