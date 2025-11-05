@@ -18,8 +18,10 @@ const app = express();
 app.use(express.json({ limit: "10kb" }));
 app.use(
   cors({
-    origin: true,
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    origin:
+      process.env.NODE_ENV === "production"
+        ? "https://texnikum.uz"
+        : "http://localhost:3000",
     credentials: true,
   })
 );
