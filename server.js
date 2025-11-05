@@ -53,12 +53,12 @@ const limiter = rateLimit({
 app.use("/api", limiter);
 app.set("trust proxy", 1);
 
-const authLimiter = rateLimit({
-  max: 5,
-  windowMs: 15 * 60 * 1000,
-  message: "Kop urinish.15 daqiqadan keyin qayta urinib kuring".red,
-});
-app.use("/auth", authLimiter, authRoutes);
+// const authLimiter = rateLimit({
+//   max: 5,
+//   windowMs: 15 * 60 * 1000,
+//   message: "Kop urinish.15 daqiqadan keyin qayta urinib kuring".red,
+// });
+app.use("/auth", authRoutes);
 
 app.get("/", (req, res) => {
   res.send("Texnikum ishlayapti ".green);
