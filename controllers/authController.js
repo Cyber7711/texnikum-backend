@@ -12,27 +12,29 @@ exports.login = async (req, res, next) => {
   try {
     const { username, password } = req.body;
 
-    console.log("🧠 Login kelib tushdi:", req.body);
-
+    if (!username || !password) {
+      return next(new AppError("Username va parol kiritilishi shart", 400));
+    }
     const admin = await Admin.findOne({ username }).select("+password");
-    if (!admin) return res.status(404).json({ message: "Admin topilmadi" });
+    if (!admin) return next(new AppError("Bunday admin mavjud emas", 404));
 
     const isMatch = await admin.correctPassword(password, admin.password);
-    if (!isMatch) return res.status(401).json({ message: "Parol noto‘g‘ri" });
+    if (!isMatch) return next(new AppError("Noto‘g‘ri parol", 401));
 
-    const token = jwt.sign({ id: admin._id }, process.env.JWT_SECRET, {
-      expiresIn: "30d",
+    const token = signToken(admin._id);
+
+    res.cookie("jwt", token, {
+      httpOnly: true,
+      secure: false,
+      maxAge: 30 * 24 * 60 * 60 * 1000,
     });
-
-    console.log("✅ Token yaratildi:", token.slice(0, 20), "...");
 
     res.status(200).json({
       status: "success",
-      message: "Kirish muvaffaqiyatli",
+      message: "Tizimga kirish muvaffaqiyatli",
       token,
     });
   } catch (err) {
-    console.error("❌ Login error:", err);
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 };
