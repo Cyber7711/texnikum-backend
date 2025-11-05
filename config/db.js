@@ -3,7 +3,11 @@ const mongoose = require("mongoose");
 
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI);
+    await mongoose.connect(process.env.MONGO_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 5000,
+    });
     console.log("Mongo ulandi".red);
   } catch (error) {
     console.error("Mongo ulanishida xatolik", error.message, red);
