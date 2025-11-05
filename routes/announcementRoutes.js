@@ -11,10 +11,9 @@ router.post(
 
   announcementsController.createAnnouncement
 );
-router.get("/", protect, announcementsController.getAllAnnouncements);
+router.get("/", announcementsController.getAllAnnouncements);
 router.get(
   "/:id",
-  protect,
   findById(Announcement),
   announcementsController.getAnnouncementById
 );

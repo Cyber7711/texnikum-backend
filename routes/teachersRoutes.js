@@ -6,13 +6,8 @@ const findById = require("../middleware/findById");
 const { protect } = require("../middleware/protect");
 
 router.post("/", protect, teacherController.createTeacher);
-router.get("/", protect, teacherController.getAllTeachers);
-router.get(
-  "/:id",
-  protect,
-  findById(Teacher),
-  teacherController.getTeacherById
-);
+router.get("/", teacherController.getAllTeachers);
+router.get("/:id", findById(Teacher), teacherController.getTeacherById);
 router.put("/:id", protect, findById(Teacher), teacherController.updateTeacher);
 router.delete(
   "/:id",

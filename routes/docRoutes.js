@@ -6,8 +6,8 @@ const Docs = require("../models/documents");
 const { protect, restrictTo } = require("../middleware/protect");
 
 router.post("/", protect, docController.createDoc);
-router.get("/", protect, docController.getAllDocs);
-router.get("/:id", protect, findById(Docs), docController.getDocById);
+router.get("/", docController.getAllDocs);
+router.get("/:id", findById(Docs), docController.getDocById);
 router.put("/:id", protect, findById(Docs), docController.updateDoc);
 router.delete("/:id", protect, findById(Docs), docController.deleteDoc);
 

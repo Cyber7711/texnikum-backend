@@ -6,8 +6,8 @@ const Event = require("../models/events");
 const { protect } = require("../middleware/protect");
 
 router.post("/", protect, eventsController.createEvent);
-router.get("/", protect, eventsController.getAllEvent);
-router.get("/:id", protect, findById(Event), eventsController.getEventById);
+router.get("/", eventsController.getAllEvent);
+router.get("/:id", findById(Event), eventsController.getEventById);
 router.put(
   "/:id",
   protect,
