@@ -11,6 +11,7 @@ const { protect } = require("../middleware/protect");
  *   post:
  *     summary: Create a new stats entry
  *     tags: [Stats]
+ *  description: Statistikajlar bo‘yicha CRUD amallar
  *     security:
  *       - bearerAuth: []
  *     requestBody:

@@ -31,23 +31,11 @@ const options = {
         },
         Stats: {
           type: "object",
-          required: ["title", "value"], // modeldagi required maydonlar
+          required: ["title", "value"],
           properties: {
-            title: {
-              type: "string",
-              description: "Statistika sarlavhasi",
-              example: "Matematika fan bo‘yicha testlar soni",
-            },
-            value: {
-              type: "integer",
-              description: "Statistika qiymati",
-              example: 25,
-            },
-            isActive: {
-              type: "boolean",
-              description: "Faol yoki yo‘q",
-              example: true,
-            },
+            title: { type: "string", example: "Matematika testlar soni" },
+            value: { type: "integer", example: 25 },
+            isActive: { type: "boolean", example: true },
             createdAt: { type: "string", format: "date-time" },
             updatedAt: { type: "string", format: "date-time" },
           },
@@ -56,38 +44,65 @@ const options = {
           type: "object",
           required: ["title", "content"],
           properties: {
-            title: {
-              type: "string",
-              description: "Yangilik sarlavhasi",
-              example: "Yangi loyiha ishga tushdi",
-            },
-            content: {
-              type: "string",
-              description: "Yangilik matni",
-              example: "Bugun kompaniyamiz yangi platformani ishga tushirdi...",
-            },
-            date: {
-              type: "string",
-              format: "date-time",
-              description: "Yangilik sanasi",
-              example: "2025-11-05T12:00:00Z",
-            },
-            author: {
-              type: "string",
-              description: "Muallif ismi",
-              example: "Admin",
-            },
-            image: {
-              type: "string",
-              description: "Yangilik rasmi manzili",
-              example: "uploads/news1.jpg",
-            },
+            title: { type: "string", example: "Yangi loyiha ishga tushdi" },
+            content: { type: "string", example: "Bugun kompaniya..." },
+            date: { type: "string", format: "date-time" },
+            author: { type: "string", example: "Admin" },
+            image: { type: "string", example: "uploads/news1.jpg" },
+          },
+        },
+        Event: {
+          type: "object",
+          required: ["name"],
+          properties: {
+            name: { type: "string", example: "Tech Conference 2025" },
+            date: { type: "string", format: "date-time" },
+            description: { type: "string", example: "Yangi texnologiyalar..." },
+          },
+        },
+        Department: {
+          type: "object",
+          required: ["name", "desc", "duration"],
+          properties: {
+            name: { type: "string", example: "Kompyuter injiniringi" },
+            desc: { type: "string", example: "Dasturlash va tizim tahlili" },
+            duration: { type: "integer", example: 4 },
+            teachers: { type: "array", items: { type: "string" } },
+            courses: { type: "array", items: { type: "string" } },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
+          },
+        },
+        Docs: {
+          type: "object",
+          required: ["title", "file"],
+          properties: {
+            title: { type: "string", example: "O‘quv dasturi 2025" },
+            file: { type: "string", example: "program2025.pdf" },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
+          },
+        },
+        Announcement: {
+          type: "object",
+          required: ["title", "description"],
+          properties: {
+            title: { type: "string", example: "Yangi kurs boshlanishi" },
+            description: { type: "string", example: "Informatika kursi..." },
+            date: { type: "string", format: "date-time" },
+            expireDate: { type: "string", format: "date-time" },
+            createdBy: { type: "string", example: "Admin" },
+            isActive: { type: "boolean", example: true },
+            role: { type: "string", enum: ["admin"], example: "admin" },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
           },
         },
       },
     },
+    security: [{ bearerAuth: [] }], // global security, barcha route’lar uchun token talab qilinadi
   },
-  apis: ["./routes/*.js"], // route fayllarni skan qiladi
+  apis: ["./routes/*.js"],
 };
 
 const swaggerSpec = swaggerJsDoc(options);

@@ -26,7 +26,7 @@ app.use(
     credentials: true,
   })
 );
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use("/swagger", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use(hpp());
 app.use(
   helmet({
@@ -61,7 +61,7 @@ const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   message: "Kop urinish.15 daqiqadan keyin qayta urinib kuring".red,
 });
-app.use("/auth", authRoutes);
+app.use("/auth", authLimiter, authRoutes);
 
 app.get("/", (req, res) => {
   res.send("Texnikum ishlayapti ".green);
