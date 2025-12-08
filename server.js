@@ -1,6 +1,7 @@
 const express = require("express");
 const dotenv = require("dotenv");
 const connectDB = require("./config/db");
+require("colors");
 const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
