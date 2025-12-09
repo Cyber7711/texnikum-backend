@@ -1,5 +1,4 @@
 // createAdmin.js (Production-ready)
-#!/usr/bin/env node
 
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
@@ -20,8 +19,10 @@ const createAdmin = async () => {
       console.log("Interaktiv rejim ishga tushdi...\n".cyan);
       username = await promptly.prompt("Username: ");
       password = await promptly.password("Parol: ", { replace: "*" });
-      
-      const confirm = await promptly.password("Parolni tasdiqlang: ", { replace: "*" });
+
+      const confirm = await promptly.password("Parolni tasdiqlang: ", {
+        replace: "*",
+      });
       if (password !== confirm) {
         console.log("❌ Parollar mos kelmadi!".red);
         process.exit(1);
@@ -50,7 +51,9 @@ const createAdmin = async () => {
     }
 
     const admin = await Admin.create({ username, password });
-    console.log(`✅ Yangi admin muvaffaqiyatli yaratildi: ${admin.username}`.green);
+    console.log(
+      `✅ Yangi admin muvaffaqiyatli yaratildi: ${admin.username}`.green
+    );
     console.log(`🔑 Parol xavfsiz saqlandi (bcrypt hash)`.green);
 
     await mongoose.connection.close();

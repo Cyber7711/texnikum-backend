@@ -1,68 +1,112 @@
-const { default: mongoose } = require("mongoose");
-const Docs = require("../models/documents");
+const validateId = require("../middleware/idValidator");
+const Document = require("../models/documents"); // ← model nomi "Document"
 const AppError = require("../utils/appError");
 
-async function createDoc(data) {
-  const allowedFields = ["title", "file"];
-  const filtered = {};
 
-  for (const key of allowedFields) {
-    if (data[key] !== undefined) filtered[key] = data[key];
+
+// === CREATE DOCUMENT ===
+const createDoc = async (docData, adminId) => {
+  const { title, file, fileType, fileSize } = docData;
+
+  if (!title || !file) {
+    throw new AppError("Sarlavha va fayl maydonlari to‘ldirilishi shart", 400);
   }
 
-  const missing = ["title", "file"].filter((f) => !filtered[f]);
-  if (missing.length)
-    throw new AppError(`Maydon(lar) tuldirilmagan: ${missing.join(", ")}`, 400);
+  const doc = await Document.create({
+    title,
+    file,
+    fileType,
+    fileSize,
+    createdBy: adminId, // ← JWT dan kelgan admin ID
+  });
 
-  const doc = new Docs({ ...filtered });
-  return await doc.save();
-}
-
-async function getAllDocs() {
-  return await Docs.find();
-}
-
-async function getDocById(id) {
-  if (!mongoose.Types.ObjectId.isValid(id))
-    throw new AppError("ID formati notugri", 400);
-  const doc = await Docs.findById(id);
-  if (!doc) {
-    throw new AppError("Document topilmadi", 400);
-  }
   return doc;
-}
+};
 
-async function updateDoc(id, updateData) {
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    throw new AppError("ID formati notugri", 400);
+// === GET ALL (faqat faol hujjatlarni) ===
+const getAllDocs = async () => {
+  return await Document.find({ isActive: true })
+    .sort({ createdAt: -1 })
+    .select("title file fileType fileSize createdAt")
+    .populate({
+      path: "createdBy",
+      select: "username",
+    });
+};
+
+// === GET BY ID ===
+const getDocById = async (id) => {
+  validateId(id);
+
+  const doc = await Document.findOne({
+    _id: id,
+    isActive: true,
+  }).populate({
+    path: "createdBy",
+    select: "username",
+  });
+
+  if (!doc) {
+    throw new AppError("Hujjat topilmadi yoki o‘chirilgan", 404);
   }
-  const allowed = ["title", "file"];
+
+  return doc;
+};
+
+// === UPDATE DOCUMENT ===
+const updateDoc = async (id, updateData, adminId) => {
+  validateId(id);
+
+  const allowed = ["title", "file", "fileType", "fileSize"];
   const filtered = {};
+
   for (const key of allowed) {
-    if (allowed !== undefined) {
+    if (updateData[key] !== undefined) {
       filtered[key] = updateData[key];
     }
   }
-  const updated = await Docs.findByIdAndUpdate(id, filtered, {
-    new: true,
-    runValidators: true,
+
+  if (Object.keys(filtered).length === 0) {
+    throw new AppError("Hech qanday yangilanish ma’lumoti yuborilmadi", 400);
+  }
+
+  const updated = await Document.findOneAndUpdate(
+    { _id: id, isActive: true },
+    { ...filtered, updatedBy: adminId },
+    { new: true, runValidators: true }
+  ).populate({
+    path: "createdBy",
+    select: "username",
   });
+
   if (!updated) {
-    throw new AppError("Document ni yangilab bulmadi", 404);
+    throw new AppError("Hujjat topilmadi yoki yangilab bo‘lmadi", 404);
   }
+
   return updated;
-}
+};
 
-async function deleteDoc(id) {
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    throw new AppError("ID formati notugri", 400);
-  }
-  const doc = await Docs.findByIdAndUpdate(id, { isActive: false, new: true });
+// === DELETE (soft delete) ===
+const deleteDoc = async (id) => {
+  validateId(id);
+
+  const doc = await Document.findOneAndUpdate(
+    { _id: id, isActive: true },
+    { isActive: false },
+    { new: true }
+  );
+
   if (!doc) {
-    throw new AppError("Documentni yangilab bulmadi", 404);
+    throw new AppError("Hujjat topilmadi yoki allaqachon o‘chirilgan", 404);
   }
-  return doc;
-}
 
-const docService = { createDoc, getAllDocs, getDocById, updateDoc, deleteDoc };
-module.exports = docService;
+  return { success: true, message: "Hujjat muvaffaqiyatli o‘chirildi" };
+};
+
+module.exports = {
+  createDoc,
+  getAllDocs,
+  getDocById,
+  updateDoc,
+  deleteDoc,
+};

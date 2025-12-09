@@ -1,30 +1,42 @@
+// models/Teacher.js
 const mongoose = require("mongoose");
 
-const newSchema = new mongoose.Schema(
+const teacherSchema = new mongoose.Schema(
   {
     fullname: {
       type: String,
-      required: [true, "uqituvchi ismi kiritilishi shart"],
-      minlength: [3, "ism kamida 3 ta harfdan iborat bulishi kerak"],
-      maxlength: [30, "ism 30 ta harfdan oshmasligi kerak"],
-      match: [
-        /^[A-Za-zА-Яа-я\s'‘’-]+$/,
-        "ismda raqam yoki maxsus raqamlar bulmasligi kerak",
-      ],
+      required: [true, "O‘qituvchi ismi kiritilishi shart"],
       trim: true,
+      minlength: [3, "Ism kamida 3 ta harfdan iborat bo‘lishi kerak"],
+      maxlength: [50, "Ism 50 ta harfdan oshmasligi kerak"],
+      match: [
+        /^[A-Za-zА-Яа-яЁё\s'‘’–-]+$/,
+        "Ismda faqat harflar, bo‘sh joy va apostrof bo‘lishi mumkin",
+      ],
     },
     subject: {
       type: String,
       required: [true, "Fan nomi kiritilishi shart"],
       enum: {
-        values: ["Matematika", "Fizika", "Informatika", "Tarix", "Ingliz tili"],
-        message: "Fan nomi notugri",
+        values: [
+          "Matematika",
+          "Fizika",
+          "Informatika",
+          "Tarix",
+          "Ingliz tili",
+          "Ona tili va adabiyot",
+          "Kimyo",
+          "Biologiya",
+          "Jismoniy tarbiya",
+          "Boshqa",
+        ],
+        message: "{VALUE} fan nomi ro‘yxatda yo‘q",
       },
     },
     experience: {
       type: Number,
       required: [true, "Tajriba yili kiritilishi shart"],
-      min: [0, "Tajriba manfiy bulmasligi kerak"],
+      min: [0, "Tajriba manfiy bo‘lmasligi kerak"],
       max: [50, "Tajriba 50 yildan oshmasligi kerak"],
     },
     email: {
@@ -32,23 +44,58 @@ const newSchema = new mongoose.Schema(
       required: [true, "Email kiritilishi shart"],
       unique: true,
       lowercase: true,
-      match: [/.+@.+\..+/, "Email formati noto‘g‘ri!"],
+      trim: true,
+      match: [/^\S+@\S+\.\S+$/, "Iltimos, to‘g‘ri email kiriting"],
+    },
+    phone: {
+      type: String,
+      required: [true, "Telefon raqami kiritilishi shart"],
+      unique: true,
+      match: [
+        /^\+998\s?\d{2}\s?\d{3}\s?\d{2}\s?\d{2}$/,
+        "Telefon raqami +998 formatida bo‘lishi kerak",
+      ],
+    },
+    photo: {
+      type: String,
+      default: "/uploads/teachers/default-avatar.jpg",
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Admin",
+      required: true,
+      immutable: true,
+      select: false,
     },
     isActive: {
       type: Boolean,
       default: true,
+      select: false,
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    collection: "teachers",
+    toJSON: {
+      transform: (doc, ret) => {
+        delete ret.__v;
+        delete ret.createdBy;
+        delete ret.isActive;
+        return ret;
+      },
+    },
+    toObject: { virtuals: true },
+  }
 );
 
-newSchema.set("toJSON", {
-  transform: (doc, ret) => {
-    delete ret.__v;
-    return ret;
-  },
-});
+// === INDEXLAR – Tez qidiruv uchun ===
+teacherSchema.index({ email: 1 });
+teacherSchema.index({ phone: 1 });
+teacherSchema.index({ subject: 1 });
+teacherSchema.index({ isActive: 1 });
+teacherSchema.index({ createdAt: -1 });
+teacherSchema.index({ fullname: "text" }); // Ism bo‘yicha qidiruv
 
-const Teacher = mongoose.model("Teache", newSchema);
+const Teacher = mongoose.model("Teacher", teacherSchema);
 
 module.exports = Teacher;

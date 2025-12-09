@@ -56,7 +56,7 @@ const eventSchema = new mongoose.Schema(
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Admin", // yoki "Teacher"
+      ref: "Admin", 
       required: true,
       immutable: true,
       select: false,
@@ -68,7 +68,7 @@ const eventSchema = new mongoose.Schema(
     },
     isPublished: {
       type: Boolean,
-      default: false, // admin tasdiqlamaguncha ko‘rinmasin
+      default: false, 
     },
   },
   {

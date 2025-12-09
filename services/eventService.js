@@ -1,18 +1,40 @@
 const Event = require("../models/events");
+const validateId = require("../middleware/idValidator");
+const AppError = require("../utils/appError");
 
-async function createEvents(data) {
-  const { name, date, description } = data;
-  if (!name) {
-    throw new Error("name yozilishi shart !");
+async function createEvent(data, adminId) {
+  const allowedFields = [
+    "name",
+    "date",
+    "description",
+    "eventType",
+    "location",
+    "endDate",
+    "startDate",
+  ];
+
+  filtered = {};
+
+  for (const key of allowedFields) {
+    if (data[key] !== undefined) filtered[key] = data[key];
   }
 
-  const events = new Event({
-    name,
-    date,
-    description,
+  const requiredFields = ["name", "description", "startDate"];
+  const missing = requiredFields.filter((field) => !filtered[field]);
+
+  if (missing.length > 0) {
+    throw new AppError(
+      `Quyidagi maydon(lar) tuldirilmagan: ${missing.join(", ")}`
+    );
+  }
+
+  const event = await Event.create({
+    ...filtered,
+    createdBy: adminId,
+    isPublished: filtered.isPublished ?? true,
   });
 
-  return await events.save();
+  return event;
 }
 
 async function getAllEvents() {
@@ -20,7 +42,7 @@ async function getAllEvents() {
   return events;
 }
 
-async function getEventsById(id) {
+async function getEventById(id) {
   const event = await Event.findById(id);
   if (!event) {
     throw new Error("event topilmadi");
@@ -28,7 +50,7 @@ async function getEventsById(id) {
   return event;
 }
 
-async function updateEvents(id, updateDate) {
+async function updateEvent(id, updateDate) {
   const event = await Event.findByIdAndUpdate(id, updateDate, { new: true });
   if (!event) {
     throw new Error("eventni yangilab bulmadi");
@@ -36,7 +58,7 @@ async function updateEvents(id, updateDate) {
   return event;
 }
 
-async function deleteEvents(id) {
+async function deleteEvent(id) {
   const event = await Event.findByIdAndDelete(id);
   if (!event) {
     throw new Error("eventni uchirib bulmadi");
@@ -45,9 +67,9 @@ async function deleteEvents(id) {
 }
 
 module.exports = {
-  createEvents,
+  createEvent,
   getAllEvents,
-  getEventsById,
-  updateEvents,
-  deleteEvents,
+  getEventById,
+  updateEvent,
+  deleteEvent,
 };

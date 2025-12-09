@@ -65,7 +65,12 @@ const authLimiter = rateLimit({
 app.use("/auth", authLimiter, authRoutes);
 
 app.get("/", (req, res) => {
-  res.send("Texnikum ishlayapti ".green);
+  res.status(200).json({
+    success: true,
+    message: "Texnikum ishlayapti",
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
 });
 
 app.get("/error-test", (req, res, next) => {

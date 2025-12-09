@@ -1,8 +1,9 @@
-const { default: mongoose } = require("mongoose");
+const validateId = require("../middleware/idValidator");
 const Announcement = require("../models/announcement");
 const AppError = require("../utils/appError");
 
-async function createAnnouncement(data) {
+// === CREATE ===
+const createAnnouncement = async (data, adminId) => {
   const allowedFields = ["title", "description", "expireDate"];
   const filtered = {};
 
@@ -10,61 +11,81 @@ async function createAnnouncement(data) {
     if (data[key] !== undefined) filtered[key] = data[key];
   }
 
-  const missing = ["title", "description"].filter((f) => !filtered[f]);
-  if (missing.length)
+  if (!filtered.title || !filtered.description) {
     throw new AppError(
-      `Maydon(lar) to‘ldirilmagan: ${missing.join(", ")}`,
+      "Sarlavha va tavsif maydonlari to‘ldirilishi shart",
       400
     );
+  }
 
-  const announcement = new Announcement({
+  const announcement = await Announcement.create({
     ...filtered,
-    createdBy: data.createdBy || "Admin",
+    createdBy: adminId,
   });
 
-  return await announcement.save();
-}
+  return announcement;
+};
 
-async function getAllAnnouncements() {
-  const now = new Date();
-  return await Announcement.find({
-    $or: [{ expireDate: { $exists: false } }, { expireDate: { $gt: now } }],
-    isActive: true,
-  }).sort({ createdAt: -1 });
-}
+const getAllAnnouncements = async () => {
+  return await Announcement.find({ isActive: true })
+    .sort({ createdAt: -1 })
+    .select("-createdBy -__v") // maxfiy fieldlarni olib tashlash
+    .populate({
+      path: "createdBy",
+      select: "username", // faqat username chiqadi
+    });
+};
 
-async function getAnnouncementById(id) {
-  if (!mongoose.Types.ObjectId.isValid(id))
-    throw new AppError("Notog‘ri ID formati", 400);
+// === GET BY ID ===
+const getAnnouncementById = async (id) => {
+  validateId(id);
 
-  const announcement = await Announcement.findById(id);
-  if (!announcement) throw new AppError("E’lon topilmadi", 404);
+  const announcement = await Announcement.findById(id).populate({
+    path: "createdBy",
+    select: "username",
+  });
+
+  if (!announcement || !announcement.isActive) {
+    throw new AppError("E’lon topilmadi", 404);
+  }
 
   return announcement;
-}
+};
 
-async function updateAnnouncement(id, updateData) {
-  if (!mongoose.Types.ObjectId.isValid(id))
-    throw new AppError("Notog‘ri ID formati", 400);
+// === UPDATE ===
+const updateAnnouncement = async (id, updateData, adminId) => {
+  validateId(id);
 
   const allowed = ["title", "description", "expireDate"];
   const filtered = {};
+
   for (const key of allowed) {
     if (updateData[key] !== undefined) filtered[key] = updateData[key];
   }
 
-  const updated = await Announcement.findByIdAndUpdate(id, filtered, {
-    new: true,
-    runValidators: true,
+  if (Object.keys(filtered).length === 0) {
+    throw new AppError("Hech qanday yangilanish ma’lumoti yuborilmadi", 400);
+  }
+
+  const updated = await Announcement.findByIdAndUpdate(
+    id,
+    { ...filtered, updatedBy: adminId }, // kim o‘zgartirganini ham saqlash
+    { new: true, runValidators: true }
+  ).populate({
+    path: "createdBy",
+    select: "username",
   });
 
-  if (!updated) throw new AppError("E’lon yangilab bo‘lmadi", 404);
-  return updated;
-}
+  if (!updated || !updated.isActive) {
+    throw new AppError("E’lon topilmadi yoki yangilab bo‘lmadi", 404);
+  }
 
-async function deleteAnnouncement(id) {
-  if (!mongoose.Types.ObjectId.isValid(id))
-    throw new AppError("Notog‘ri ID formati", 400);
+  return updated;
+};
+
+// === DELETE (soft delete) ===
+const deleteAnnouncement = async (id) => {
+  validateId(id);
 
   const announcement = await Announcement.findByIdAndUpdate(
     id,
@@ -72,11 +93,12 @@ async function deleteAnnouncement(id) {
     { new: true }
   );
 
-  if (!announcement)
-    throw new AppError("E’lon topilmadi yoki o‘chirib bo‘lmadi", 404);
+  if (!announcement) {
+    throw new AppError("E’lon topilmadi yoki allaqachon o‘chirilgan", 404);
+  }
 
-  return announcement;
-}
+  return { message: "E’lon muvaffaqiyatli o‘chirildi (soft-delete)" };
+};
 
 module.exports = {
   createAnnouncement,
