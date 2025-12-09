@@ -33,11 +33,11 @@ const newsSchema = new mongoose.Schema(
       select: false,
     },
     image: {
-      type: String, // Cloudinary URL yoki /uploads/news/...
+      type: String,
       default: null,
     },
     imagePublicId: {
-      type: String, // Cloudinary bo‘lsa public_id saqlash uchun
+      type: String,
       select: false,
     },
     isActive: {
@@ -47,7 +47,7 @@ const newsSchema = new mongoose.Schema(
     },
     isPublished: {
       type: Boolean,
-      default: true, // agar false bo‘lsa – faqat admin ko‘radi
+      default: true,
     },
     views: {
       type: Number,

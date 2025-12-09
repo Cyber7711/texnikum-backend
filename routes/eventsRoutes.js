@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const eventsController = require("../controllers/eventsController");
 const findById = require("../middleware/findById");
-const Event = require("../models/events");
+const Event = require("../models/event");
 const { protect } = require("../middleware/protect");
 
 /**

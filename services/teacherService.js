@@ -50,14 +50,14 @@ async function updateTeacher(id, updateData) {
     "email",
     "isActive",
   ];
-  const filteredData = {};
+  const filtered = {};
 
   for (const key of allowedFields) {
     if (updateData[key] !== undefined) {
-      filteredData[key] = updateData[key];
+      filtered[key] = updateData[key];
     }
   }
-  const teachers = await Teacher.findByIdAndUpdate(id, filteredData, {
+  const teachers = await Teacher.findByIdAndUpdate(id, filtered, {
     new: true,
     runValidators: true,
   });

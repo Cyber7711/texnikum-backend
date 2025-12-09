@@ -19,7 +19,7 @@ const createAnnouncement = async (data, adminId) => {
   }
 
   const announcement = await Announcement.create({
-    ...filtered,
+    ...filtered,  
     createdBy: adminId,
   });
 

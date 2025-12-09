@@ -2,7 +2,7 @@ const { default: mongoose } = require("mongoose");
 const News = require("../models/news");
 const AppError = require("../utils/appError");
 
-async function createNew(data) {
+async function createNew(data, adminId) {
   const allowedFields = ["title", "content"];
   const filtered = {};
 

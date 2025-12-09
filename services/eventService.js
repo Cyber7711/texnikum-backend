@@ -1,19 +1,18 @@
-const Event = require("../models/events");
+const Event = require("../models/event");
 const validateId = require("../middleware/idValidator");
 const AppError = require("../utils/appError");
 
 async function createEvent(data, adminId) {
   const allowedFields = [
     "name",
-    "date",
     "description",
+    "startDate",
+    "endDate",
     "eventType",
     "location",
-    "endDate",
-    "startDate",
+    "isPublished",
   ];
-
-  filtered = {};
+  const filtered = {};
 
   for (const key of allowedFields) {
     if (data[key] !== undefined) filtered[key] = data[key];
@@ -24,7 +23,8 @@ async function createEvent(data, adminId) {
 
   if (missing.length > 0) {
     throw new AppError(
-      `Quyidagi maydon(lar) tuldirilmagan: ${missing.join(", ")}`
+      `Quyidagi maydon(lar) tuldirilmagan: ${missing.join(", ")}`,
+      400
     );
   }
 
@@ -38,32 +38,82 @@ async function createEvent(data, adminId) {
 }
 
 async function getAllEvents() {
-  const events = await Event.find();
-  return events;
+  const now = new Date();
+  return await Event.find({
+    isActive: true,
+    isPublished: true,
+    startDate: { $gte: now },
+  })
+    .sort({
+      startDate: 1,
+    })
+    .limit(20)
+    .select("name description startDate endDate location eventType")
+    .populate("createdBy", "username");
 }
 
 async function getEventById(id) {
-  const event = await Event.findById(id);
+  validateId(id);
+  const event = await Event.findOne({ _id: id, isActive: true }).populate(
+    "createdBy",
+    "username"
+  );
   if (!event) {
-    throw new Error("event topilmadi");
+    throw new AppError("Event topilmadi", 404);
   }
   return event;
 }
 
-async function updateEvent(id, updateDate) {
-  const event = await Event.findByIdAndUpdate(id, updateDate, { new: true });
+async function updateEvent(id, updateDate, adminId) {
+  validateId(id);
+
+  const allowedFields = [
+    "name",
+    "description",
+    "startDate",
+    "endDate",
+    "eventType",
+    "location",
+    "isPublished",
+  ];
+
+  const filtered = {};
+
+  for (const key of allowedFields) {
+    if (updateDate[key] !== undefined) {
+      filtered[key] = updateDate[key];
+    }
+  }
+
+  if (Object.keys(filtered).length === 0) {
+    throw new AppError("Hech qanday yangilanish ma’lumoti yuborilmadi", 400);
+  }
+  const event = await Event.findOneAndUpdate(
+    { _id: id, isActive: true },
+    filtered,
+    {
+      new: true,
+      runValidators: true,
+    }
+  ).populate("createdBy", "username");
+
   if (!event) {
-    throw new Error("eventni yangilab bulmadi");
+    throw new AppError("Eventni yangilab bulmadi", 404);
   }
   return event;
 }
 
 async function deleteEvent(id) {
-  const event = await Event.findByIdAndDelete(id);
+  validateId(id);
+  const event = await Event.findOneAndUpdate(
+    { _id: id, isActive: true },
+    { isActive: false },
+    { new: true }
+  );
   if (!event) {
-    throw new Error("eventni uchirib bulmadi");
+    throw new AppError("Eventni uchirib bulmadi", 404);
   }
-  return event;
+  return { success: true, message: "Event muvaffaqiyatli uchirildi" };
 }
 
 module.exports = {
