@@ -1,90 +1,61 @@
-const { default: mongoose } = require("mongoose");
+const validateId = require("../middleware/idValidator");
 const Teacher = require("../models/teachers");
 const AppError = require("../utils/appError");
 
-async function createTeacher(data) {
-  const { fullname, subject, experience, email } = data;
-  const missingFields = [];
-  if (!fullname) missingFields.push("fullname");
-  if (!subject) missingFields.push("subject");
-  if (!experience) missingFields.push("experience");
-  if (!email) missingFields.push("email");
-
-  if (missingFields.length > 0) {
-    throw new AppError(
-      `Quyidagi maydon(lar) to‘ldirilmagan: ${missingFields.join(", ")}`,
-      400
-    );
+class TeacherSevice {
+  static async create(data, authorId) {
+    const teacher = await Teacher.create({
+      ...data,
+      author: authorId,
+    });
+    return teacher;
   }
-
-  const existingTeacher = await Teacher.findOne({ email });
-  if (existingTeacher) {
-    throw new AppError("bu email allaqachon ruyxatdan utgan", 400);
+  static async getAll() {
+    return await Teacher.find().sort({ date: -1 });
   }
-
-  const teachers = new Teacher({ fullname, subject, experience, email });
-  return await teachers.save();
-}
-
-async function getAllTeachers() {
-  const teachers = await Teacher.find({ isActive: true });
-  return teachers;
-}
-
-async function getTeacherById(id) {
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    throw new AppError("notugri ID formati", 400);
-  }
-  const teachers = await Teacher.findById(id);
-  if (!teachers) {
-    throw new AppError("bunday Uqituvchi yuq", 400);
-  }
-  return teachers;
-}
-
-async function updateTeacher(id, updateData) {
-  const allowedFields = [
-    "fullname",
-    "subject",
-    "experience",
-    "email",
-    "isActive",
-  ];
-  const filtered = {};
-
-  for (const key of allowedFields) {
-    if (updateData[key] !== undefined) {
-      filtered[key] = updateData[key];
+  static async getById(id) {
+    validateId(id);
+    const teacher = await Teacher.findById(id);
+    if (!teacher) {
+      throw new AppError("Uqituvchi topilmadi", 404);
     }
+    return teacher;
   }
-  const teachers = await Teacher.findByIdAndUpdate(id, filtered, {
-    new: true,
-    runValidators: true,
-  });
-  if (!teachers) {
-    throw new AppError("Uqituvchini yangilab bulmadi", 400);
+  static async update(id, updateData) {
+    validateId(id);
+
+    const allowedFields = [
+      "fullname",
+      "subject",
+      "experience",
+      "email",
+      "phone",
+      "photo",
+    ];
+    const filteredData = {};
+
+    Object.keys(updateData).forEach((key) => {
+      if (allowedFields.includes(key)) filteredData[key] = updateData[key];
+    });
+
+    const update = await Teacher.findByIdAndUpdate(id, filteredData, {
+      new: true,
+      runValidators: true,
+    });
+    if (!update) {
+      throw new AppError("Uqituvchini yangilanshda xatolik", 400);
+    }
+    return update;
   }
-  return teachers;
+  static async delete(id) {
+    validateId(id);
+
+    const teacher = await Teacher.findByIdAndDelete(id);
+    if (!teacher) {
+      throw new AppError("Uqituvchini uchiishda xatolik", 400);
+    }
+    return teacher;
+  }
 }
 
-async function deleteTeacher(id) {
-  const teachers = await Teacher.findByIdAndUpdate(
-    id,
-    { isActive: false },
-    { new: true }
-  );
-  if (!teachers) {
-    throw new AppError("Teacherni uchirib bulmadi", 400);
-  }
-  return { message: "Teacher faol holatdan chiqarildi", teachers };
-}
-
-const teacherService = {
-  createTeacher,
-  getAllTeachers,
-  getTeacherById,
-  updateTeacher,
-  deleteTeacher,
-};
-
-module.exports = teacherService;
+module.exports = TeacherSevice;

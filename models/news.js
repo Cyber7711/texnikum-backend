@@ -27,7 +27,7 @@ const newsSchema = new mongoose.Schema(
     },
     author: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Admin", // yoki "Teacher"
+      ref: "Admin",
       required: true,
       immutable: true,
       select: false,

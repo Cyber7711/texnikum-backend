@@ -3,7 +3,7 @@
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const colors = require("colors");
-const promptly = require("promptly"); // yoki inquirer
+const promptly = require("promptly");
 const Admin = require("./models/admin");
 const connectDB = require("./config/db");
 

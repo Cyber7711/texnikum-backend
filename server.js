@@ -32,10 +32,17 @@ app.use(hpp());
 app.use(
   helmet({
     contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" }, // <--- MANA SHU QATORNI QO'SHING
   })
 );
-app.use("/uploads", express.static("uploads"));
-
+app.use(
+  "/uploads",
+  express.static("uploads", {
+    setHeaders: (res, path, stat) => {
+      res.set("Cross-Origin-Resource-Policy", "cross-origin");
+    },
+  })
+);
 const routesPath = path.join(__dirname, "routes");
 const routeFiles = fs.readdirSync(routesPath);
 const filtered = routeFiles.filter(

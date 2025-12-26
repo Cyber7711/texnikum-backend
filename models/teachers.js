@@ -60,13 +60,7 @@ const teacherSchema = new mongoose.Schema(
       type: String,
       default: "/uploads/teachers/default-avatar.jpg",
     },
-    createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Admin",
-      required: true,
-      immutable: true,
-      select: false,
-    },
+
     isActive: {
       type: Boolean,
       default: true,

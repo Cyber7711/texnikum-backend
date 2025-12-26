@@ -1,78 +1,79 @@
-const newsService = require("../services/newService");
+const NewsService = require("../services/newsService"); // Fayl nomiga e'tibor bering!
+const AppError = require("../utils/appError");
+const catchAsync = require("../middleware/catchAsync"); // Yoki middleware/asyncWrapper
 
-const createNews = async (req, res, next) => {
-  try {
-    const result = await newsService.createNew(req.body);
-    res.status(201).json({
-      success: true,
-      message: "rasm muvaffaqiyatli yuklandi",
-      data: result,
-    });
-  } catch (err) {
-    return next(err);
+// 1. Yangilik yaratish
+exports.createNews = catchAsync(async (req, res, next) => {
+  // Rasm bor-yo'qligini tekshiramiz
+  let imagePath = null;
+  if (req.file) {
+    imagePath = `/uploads/news/${req.file.filename}`;
   }
-};
 
-const getAllNews = async (req, res, next) => {
-  try {
-    const result = await newsService.getAllNews();
-    if (!result.length) {
-      res.status(200).sent();
-    }
-    res.status(200).json({
-      success: true,
-      count: result.length,
-      message: "yangiliklar muvaffaqiyatli topildi",
-      data: result,
-    });
-  } catch (err) {
-    return next(err);
+  // Token orqali kelgan Admin ID sini tekshiramiz
+  if (!req.user || !req.user._id) {
+    return next(new AppError("Avtorizatsiyadan o'tilmagan!", 401));
   }
-};
 
-const getNewsById = async (req, res, next) => {
-  try {
-    const result = await newsService.getNewsById(req.params, id);
-    res.status(200).json({
-      success: true,
-      message: "yangilik muvaffaqiyatli topildi ",
-      data: result,
-    });
-  } catch (err) {
-    return next(err);
+  // Servicega tayyor ma'lumotni beramiz
+  const newsData = {
+    title: req.body.title,
+    content: req.body.content,
+    image: imagePath,
+  };
+
+  const result = await NewsService.createNews(newsData, req.user._id);
+
+  res.status(201).json({
+    status: "success",
+    message: "Yangilik muvaffaqiyatli yaratildi",
+    data: result,
+  });
+});
+
+// 2. Barchasini olish
+exports.getAllNews = catchAsync(async (req, res, next) => {
+  const result = await NewsService.getAllNews();
+
+  res.status(200).json({
+    status: "success",
+    count: result.length,
+    data: result,
+  });
+});
+
+// 3. Bittasini olish
+exports.getNewsById = catchAsync(async (req, res, next) => {
+  const result = await NewsService.getNewsById(req.params.id);
+
+  res.status(200).json({
+    status: "success",
+    data: result,
+  });
+});
+
+// 4. Yangilash
+exports.updateNews = catchAsync(async (req, res, next) => {
+  // Agar rasm yangilansa, yangi pathni qo'shamiz
+  if (req.file) {
+    req.body.image = `/uploads/news/${req.file.filename}`;
   }
-};
 
-const updateNews = async (req, res, next) => {
-  try {
-    const result = await newsService.updateNews(req.params.id, req.body);
-    res.status(200).json({
-      success: true,
-      message: "Yangilik muvaffaqiyatli yangilandi",
-      data: result,
-    });
-  } catch (err) {
-    return next(err);
-  }
-};
+  const result = await NewsService.updateNews(req.params.id, req.body);
 
-const deleteNews = async (req, res, next) => {
-  try {
-    const result = await newsService.deleteNews(req.params.id);
-    res.status(200).json({
-      success: true,
-      message: "Yangilik muvaffaqiyatli uchirildi",
-    });
-  } catch (err) {
-    return next(err);
-  }
-};
+  res.status(200).json({
+    status: "success",
+    message: "Yangilik yangilandi",
+    data: result,
+  });
+});
 
-const newsController = {
-  createNews,
-  getAllNews,
-  getNewsById,
-  updateNews,
-  deleteNews,
-};
-module.exports = newsController;
+// 5. O'chirish
+exports.deleteNews = catchAsync(async (req, res, next) => {
+  await NewsService.deleteNews(req.params.id);
+
+  res.status(204).json({
+    status: "success",
+    data: null,
+  });
+});

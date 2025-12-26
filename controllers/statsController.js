@@ -1,79 +1,57 @@
-const statsService = require("../services/statisticService");
+const Stats = require("../models/statistics"); // 1. MODELNI IMPORT QILISH SHART
+const StatsService = require("../services/statisticService");
+const catchAsync = require("../middleware/catchAsync");
+const sendResponse = require("../middleware/sendResponse");
+const News = require("../models/news"); // Sanash uchun kerak bo'lsa
 
-const createStats = async (req, res, next) => {
-  try {
-    const result = await statsService.createStat(req.body);
-    res.status(201).json({
-      success: true,
-      message: "statistika muvaffaqiyatli yaratildi",
-      data: result,
+// BU GETALL VAZIFASINI BAJARADI
+const getAll = catchAsync(async (req, res) => {
+  // Bazadan bittasini olamiz
+  const stats = await Stats.findOne().sort({ createdAt: -1 });
+  // Agarda avtomatik sanash kerak bo'lsa (masalan news):
+  const newsCount = await News.countDocuments();
+
+  sendResponse(res, {
+    status: 200,
+    message: "Statistikalar muvaffaqiyatli olindi",
+    data: {
+      ...stats?.toObject(),
+      news: newsCount,
+    },
+  });
+});
+
+const updateStats = catchAsync(async (req, res, next) => {
+  // Bazada statistika bormi?
+  let stats = await Stats.findOne();
+
+  if (stats) {
+    // Agar bo'lsa - yangilaymiz
+    stats = await Stats.findByIdAndUpdate(stats._id, req.body, {
+      new: true,
+      runValidators: true,
     });
-  } catch (err) {
-    return next(err);
+  } else {
+    // Agar yo'q bo'lsa - yangi yaratamiz
+    // req.user._id 'protect' middleware dan keladi
+    stats = await Stats.create({ ...req.body, author: req.user._id });
   }
-};
 
-const getAllStats = async (req, res, next) => {
-  try {
-    const result = await statsService.getAllStats();
-    if (!result.length) {
-      res.status(200).send();
-    }
-    res.status(200).json({
-      success: true,
-      count: result.length,
-      message: "statistikalar muvaffaqiyatli olindi",
-      data: result,
-    });
-  } catch (err) {
-    return next(err);
-  }
-};
+  sendResponse(res, {
+    status: 200,
+    message: "Statistika muvaffaqiyatli saqlandi",
+    data: stats,
+  });
+});
 
-const getStatsById = async (req, res, next) => {
-  try {
-    const result = await statsService.getStatById(req.params.id);
-    res.status(200).json({
-      success: true,
-      message: "statistika id si buyicha topildi",
-      data: result,
-    });
-  } catch (err) {
-    return next(err);
-  }
-};
+// Qolgan funksiyalar (agar kerak bo'lsa)
+const getById = catchAsync(async (req, res) => {
+  const result = await StatsService.getById(req.params.id);
+  sendResponse(res, { status: 200, data: result });
+});
 
-const updateStats = async (req, res, next) => {
-  try {
-    const result = await statsService.updateStat(req.params.id, req.body);
-    res.status(200).json({
-      success: true,
-      message: "statistika muvaffaqiyatli yangilandi",
-      data: result,
-    });
-  } catch (err) {
-    return next(err);
-  }
-};
-
-const deleteStats = async (req, res, next) => {
-  try {
-    const result = await statsService.deleteStat(req.params.id);
-    res.status(200).json({
-      success: true,
-      message: "statistika muvaffaqiyatli uchirildi",
-    });
-  } catch (err) {
-    return next(err);
-  }
-};
-
-const statsController = {
-  createStats,
-  getAllStats,
-  getStatsById,
+module.exports = {
   updateStats,
-  deleteStats,
+  getAll, // Routerda ishlatilgani uchun bu yerda bo'lishi shart
+  getById,
 };
-
-module.exports = statsController;

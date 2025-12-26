@@ -15,7 +15,7 @@ const documentSchema = new mongoose.Schema(
       ],
     },
     file: {
-      type: String, // Cloudinary, AWS S3 yoki local public/uploads/... yo‘li
+      type: String,
       required: [true, "Fayl yuklanishi shart"],
       trim: true,
     },
@@ -44,10 +44,10 @@ const documentSchema = new mongoose.Schema(
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Admin", // yoki "Teacher" bo‘lsa shuni yozing
+      ref: "Admin",
       required: true,
       immutable: true,
-      select: false, // defaultda ko‘rinmasin
+      select: false,
     },
     isActive: {
       type: Boolean,
@@ -63,8 +63,7 @@ const documentSchema = new mongoose.Schema(
         delete ret.__v;
         delete ret.isActive;
         delete ret.createdBy;
-        // Agar fayl yo‘lini to‘liq URL qilib qaytarmoqchi bo‘lsangiz:
-        // ret.fileUrl = `${process.env.APP_URL}/${ret.file}`;
+
         return ret;
       },
     },

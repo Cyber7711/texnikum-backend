@@ -33,13 +33,7 @@ const statisticSchema = new mongoose.Schema(
       min: [0],
       max: [5000],
     },
-    createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Admin",
-      required: true,
-      immutable: true,
-      select: false,
-    },
+
     isActive: {
       type: Boolean,
       default: true,

@@ -1,21 +1,10 @@
+const catchAsync = require("../middleware/catchAsync");
 const teacherService = require("../services/teacherService");
 const AppError = require("../utils/appError");
 
-const createTeacher = async (req, res, next) => {
-  try {
-    const result = await teacherService.createTeacher(req.body);
-    if (!result) {
-      throw new AppError("Teacher yaratib bulmadi", 400);
-    }
-    res.status(201).json({
-      success: true,
-      message: "Teacher muvaffaqiyatli yaratildi",
-      data: result,
-    });
-  } catch (err) {
-    return next(err);
-  }
-};
+const createTeacher = catchAsync(async (req, res) => {
+  const result = await teacherService.create(req.body);
+});
 
 const getAllTeachers = async (req, res, next) => {
   try {

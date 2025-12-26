@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const upload = require("../middleware/uploads");
 const teacherController = require("../controllers/teachersController");
 const Teacher = require("../models/teachers");
 const findById = require("../middleware/findById");
@@ -23,7 +24,12 @@ const { protect } = require("../middleware/protect");
  *       200:
  *         description: Teacher created successfully
  */
-router.post("/", protect, teacherController.createTeacher);
+router.post(
+  "/",
+  protect,
+  upload.single("image"),
+  teacherController.createTeacher
+);
 
 /**
  * @swagger
