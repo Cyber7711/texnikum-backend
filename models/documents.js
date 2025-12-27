@@ -1,4 +1,4 @@
-// models/Document.js
+// models/documents.js
 const mongoose = require("mongoose");
 
 const documentSchema = new mongoose.Schema(
@@ -9,13 +9,15 @@ const documentSchema = new mongoose.Schema(
       trim: true,
       minlength: [3, "Sarlavha kamida 3 belgidan iborat bo‘lishi kerak"],
       maxlength: [150, "Sarlavha 150 belgidan oshmasligi kerak"],
-      match: [
-        /^[a-zA-Z0-9\s\(\)\-\_\.а-яА-ЯёЁ]+$/,
-        "Sarlavhada taqiqlangan belgilar bor",
-      ],
+    },
+    category: {
+      type: String,
+      required: [true, "Kategoriya tanlanishi shart"],
+      enum: ["nizom", "qaror", "buyruq", "metodik"], // Frontenddagi variantlar bilan mos
+      trim: true,
     },
     file: {
-      type: String,
+      type: String, // Fayl yo'li (path)
       required: [true, "Fayl yuklanishi shart"],
       trim: true,
     },
@@ -40,14 +42,12 @@ const documentSchema = new mongoose.Schema(
     },
     fileSize: {
       type: Number, // byte da
-      max: [20 * 1024 * 1024, "Fayl hajmi 20 MB dan oshmasligi kerak"], // 20 MB limit
+      max: [20 * 1024 * 1024, "Fayl hajmi 20 MB dan oshmasligi kerak"],
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Admin",
+      ref: "Admin", // Yoki "User", tizimingizdagi admin model nomiga qarab
       required: true,
-      immutable: true,
-      select: false,
     },
     isActive: {
       type: Boolean,
@@ -58,28 +58,12 @@ const documentSchema = new mongoose.Schema(
   {
     timestamps: true,
     collection: "documents",
-    toJSON: {
-      transform: (doc, ret) => {
-        delete ret.__v;
-        delete ret.isActive;
-        delete ret.createdBy;
-
-        return ret;
-      },
-    },
   }
 );
 
-// === INDEXLAR – JUDA MUHIM! ===
+// Indekslar
 documentSchema.index({ title: 1 });
-documentSchema.index({ fileType: 1 });
+documentSchema.index({ category: 1 }); // Kategoriya bo'yicha qidiruv uchun
 documentSchema.index({ createdAt: -1 });
-documentSchema.index({ isActive: 1 });
-documentSchema.index({ createdBy: 1 });
 
-// === UNIQUE + COMPOUND INDEX (title + file) ===
-documentSchema.index({ title: 1, fileType: 1 }, { unique: true });
-
-const Document = mongoose.model("Document", documentSchema);
-
-module.exports = Document;
+module.exports = mongoose.model("Document", documentSchema);

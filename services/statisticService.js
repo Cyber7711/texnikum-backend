@@ -37,9 +37,10 @@ class StatsService {
     const updated = await Stats.findByIdAndUpdate(id, filteredData, {
       new: true,
       runValidators: true,
+      context: "query",
     });
 
-    if (updated) {
+    if (!updated) {
       throw new AppError("Statistikani topilmadi", 400);
     }
     return updated;

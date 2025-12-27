@@ -58,7 +58,7 @@ const teacherSchema = new mongoose.Schema(
     },
     photo: {
       type: String,
-      default: "/uploads/teachers/default-avatar.jpg",
+      default: null,
     },
 
     isActive: {

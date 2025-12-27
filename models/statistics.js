@@ -22,9 +22,21 @@ const statisticSchema = new mongoose.Schema(
       min: [0],
       validate: {
         validator: function (v) {
-          return v <= this.students; // Bitiruvchilar o‘quvchilardan ko‘p bo‘lmasin
+          // 'this.getUpdate()' orqali update qilinayotgan qiymatlarni olamiz
+          // Agar 'save' bo'lsa 'this.students', agar 'update' bo'lsa 'this.getUpdate().$set.students'
+          const students =
+            this instanceof mongoose.Query
+              ? this.getUpdate().students || this.getUpdate().$set?.students
+              : this.students;
+
+          // Agar students qiymati kelayotgan bo'lsa, tekshiramiz
+          if (students !== undefined) {
+            return v <= students;
+          }
+          return true; // Agar students o'zgartirilmayotgan bo'lsa, o'tkazib yuboramiz
         },
-        message: "Bitiruvchilar soni jami o‘quvchilardan oshmasligi kerak",
+        message:
+          "Bitiruvchilar soni jami o‘quvchilardan ({VALUE}) oshmasligi kerak",
       },
     },
     teachers: {

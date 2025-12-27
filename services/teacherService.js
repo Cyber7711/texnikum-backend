@@ -1,29 +1,42 @@
-const validateId = require("../middleware/idValidator");
 const Teacher = require("../models/teachers");
 const AppError = require("../utils/appError");
+const mongoose = require("mongoose");
 
-class TeacherSevice {
+class TeacherService {
+  // Yaratish
   static async create(data, authorId) {
     const teacher = await Teacher.create({
       ...data,
-      author: authorId,
+      author: authorId, // Agar modelda author bo'lsa
     });
     return teacher;
   }
+
+  // Hammasini olish
   static async getAll() {
-    return await Teacher.find().sort({ date: -1 });
+    // isActive: true sharti o'chirilganlarni ko'rsatmaslik uchun
+    return await Teacher.find({ isActive: true }).sort({ createdAt: -1 });
   }
+
+  // ID bo'yicha olish
   static async getById(id) {
-    validateId(id);
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      throw new AppError("Noto'g'ri ID formati", 400);
+    }
     const teacher = await Teacher.findById(id);
     if (!teacher) {
-      throw new AppError("Uqituvchi topilmadi", 404);
+      throw new AppError("O'qituvchi topilmadi", 404);
     }
     return teacher;
   }
-  static async update(id, updateData) {
-    validateId(id);
 
+  // Yangilash
+  static async update(id, updateData) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      throw new AppError("Noto'g'ri ID formati", 400);
+    }
+
+    // Ruxsat berilgan maydonlar
     const allowedFields = [
       "fullname",
       "subject",
@@ -31,31 +44,47 @@ class TeacherSevice {
       "email",
       "phone",
       "photo",
+      "isActive",
     ];
     const filteredData = {};
 
     Object.keys(updateData).forEach((key) => {
-      if (allowedFields.includes(key)) filteredData[key] = updateData[key];
+      if (allowedFields.includes(key)) {
+        filteredData[key] = updateData[key];
+      }
     });
 
-    const update = await Teacher.findByIdAndUpdate(id, filteredData, {
+    const updated = await Teacher.findByIdAndUpdate(id, filteredData, {
       new: true,
       runValidators: true,
     });
-    if (!update) {
-      throw new AppError("Uqituvchini yangilanshda xatolik", 400);
-    }
-    return update;
-  }
-  static async delete(id) {
-    validateId(id);
 
-    const teacher = await Teacher.findByIdAndDelete(id);
-    if (!teacher) {
-      throw new AppError("Uqituvchini uchiishda xatolik", 400);
+    if (!updated) {
+      throw new AppError("O'qituvchi topilmadi", 404);
     }
-    return teacher;
+    return updated;
+  }
+
+  // O'chirish (Soft Delete)
+  static async deleteTeacher(id) {
+    // Bazadan butunlay o'chirmasdan, isActive: false qilamiz (Arxivlash)
+    const deleted = await Teacher.findByIdAndUpdate(
+      id,
+      { isActive: false },
+      { new: true }
+    );
+
+    // Agar butunlay o'chirmoqchi bo'lsangiz, yuqoridagi qatorni o'chirib, buni yozing:
+    // const deleted = await Teacher.findByIdAndDelete(id);
+
+    if (!deleted) {
+      throw new AppError(
+        "O'qituvchi topilmadi yoki allaqachon o'chirilgan",
+        404
+      );
+    }
+    return deleted;
   }
 }
 
-module.exports = TeacherSevice;
+module.exports = TeacherService;

@@ -17,6 +17,7 @@ dotenv.config();
 connectDB();
 
 const app = express();
+app.get("/favicon.ico", (req, res) => res.status(204).end());
 app.use(express.json({ limit: "10kb" }));
 app.use(
   cors({
@@ -28,6 +29,7 @@ app.use(
   })
 );
 app.use("/swagger", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
 app.use(hpp());
 app.use(
   helmet({
@@ -35,14 +37,7 @@ app.use(
     crossOriginResourcePolicy: { policy: "cross-origin" }, // <--- MANA SHU QATORNI QO'SHING
   })
 );
-app.use(
-  "/uploads",
-  express.static("uploads", {
-    setHeaders: (res, path, stat) => {
-      res.set("Cross-Origin-Resource-Policy", "cross-origin");
-    },
-  })
-);
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 const routesPath = path.join(__dirname, "routes");
 const routeFiles = fs.readdirSync(routesPath);
 const filtered = routeFiles.filter(

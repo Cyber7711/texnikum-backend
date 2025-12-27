@@ -9,10 +9,6 @@ const newsSchema = new mongoose.Schema(
       trim: true,
       minlength: [5, "Sarlavha kamida 5 belgidan iborat bo‘lishi kerak"],
       maxlength: [150, "Sarlavha 150 belgidan oshmasligi kerak"],
-      match: [
-        /^[a-zA-Z0-9\s\.\,\-\(\)\!\?а-яА-ЯёЁ№]+$/,
-        "Sarlavhada taqiqlangan belgilar bor",
-      ],
     },
     content: {
       type: String,

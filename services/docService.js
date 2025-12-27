@@ -1,106 +1,88 @@
-const validateId = require("../middleware/idValidator");
-const Document = require("../models/documents"); // ← model nomi "Document"
+// services/docService.js
+const Document = require("../models/documents");
 const AppError = require("../utils/appError");
 
-
-
-// === CREATE DOCUMENT ===
+// === CREATE ===
 const createDoc = async (docData, adminId) => {
-  const { title, file, fileType, fileSize } = docData;
-
-  if (!title || !file) {
-    throw new AppError("Sarlavha va fayl maydonlari to‘ldirilishi shart", 400);
-  }
+  const { title, category, file, fileType, fileSize } = docData;
 
   const doc = await Document.create({
     title,
+    category,
     file,
     fileType,
     fileSize,
-    createdBy: adminId, // ← JWT dan kelgan admin ID
+    createdBy: adminId,
   });
 
   return doc;
 };
 
-// === GET ALL (faqat faol hujjatlarni) ===
-const getAllDocs = async () => {
-  return await Document.find({ isActive: true })
-    .sort({ createdAt: -1 })
-    .select("title file fileType fileSize createdAt")
-    .populate({
-      path: "createdBy",
-      select: "username",
-    });
+// === GET ALL ===
+const getAllDocs = async (query) => {
+  // Oddiy filtratsiya (search)
+  let filter = { isActive: true };
+
+  if (query && query.category) {
+    filter.category = query.category;
+  }
+
+  // Agar qidiruv so'zi bo'lsa
+  if (query && query.search) {
+    filter.title = { $regex: query.search, $options: "i" };
+  }
+
+  return await Document.find(filter).sort({ createdAt: -1 }).populate({
+    path: "createdBy",
+    select: "name username", // Admin ismini ham qaytarish
+  });
 };
 
 // === GET BY ID ===
 const getDocById = async (id) => {
-  validateId(id);
-
-  const doc = await Document.findOne({
-    _id: id,
-    isActive: true,
-  }).populate({
-    path: "createdBy",
-    select: "username",
-  });
-
-  if (!doc) {
-    throw new AppError("Hujjat topilmadi yoki o‘chirilgan", 404);
-  }
-
+  const doc = await Document.findOne({ _id: id, isActive: true }).populate(
+    "createdBy",
+    "username"
+  );
+  if (!doc) throw new AppError("Hujjat topilmadi", 404);
   return doc;
 };
 
-// === UPDATE DOCUMENT ===
+// === UPDATE ===
 const updateDoc = async (id, updateData, adminId) => {
-  validateId(id);
+  // Ruxsat etilgan maydonlar
+  const allowedFields = ["title", "category", "file", "fileType", "fileSize"];
+  const filteredData = {};
 
-  const allowed = ["title", "file", "fileType", "fileSize"];
-  const filtered = {};
-
-  for (const key of allowed) {
-    if (updateData[key] !== undefined) {
-      filtered[key] = updateData[key];
+  Object.keys(updateData).forEach((key) => {
+    if (allowedFields.includes(key)) {
+      filteredData[key] = updateData[key];
     }
-  }
-
-  if (Object.keys(filtered).length === 0) {
-    throw new AppError("Hech qanday yangilanish ma’lumoti yuborilmadi", 400);
-  }
-
-  const updated = await Document.findOneAndUpdate(
-    { _id: id, isActive: true },
-    { ...filtered, updatedBy: adminId },
-    { new: true, runValidators: true }
-  ).populate({
-    path: "createdBy",
-    select: "username",
   });
 
-  if (!updated) {
-    throw new AppError("Hujjat topilmadi yoki yangilab bo‘lmadi", 404);
-  }
+  // Oxirgi o'zgartirgan odamni ham saqlash mumkin (agar modelda bo'lsa)
+  // filteredData.updatedBy = adminId;
 
-  return updated;
+  const updatedDoc = await Document.findOneAndUpdate(
+    { _id: id, isActive: true },
+    filteredData,
+    { new: true, runValidators: true }
+  );
+
+  if (!updatedDoc) throw new AppError("Hujjat topilmadi", 404);
+  return updatedDoc;
 };
 
-// === DELETE (soft delete) ===
+// === DELETE (Soft delete) ===
 const deleteDoc = async (id) => {
-  validateId(id);
-
-  const doc = await Document.findOneAndUpdate(
+  const deleted = await Document.findOneAndUpdate(
     { _id: id, isActive: true },
     { isActive: false },
     { new: true }
   );
 
-  if (!doc) {
-    throw new AppError("Hujjat topilmadi yoki allaqachon o‘chirilgan", 404);
-  }
-
-  return { success: true, message: "Hujjat muvaffaqiyatli o‘chirildi" };
+  if (!deleted) throw new AppError("Hujjat topilmadi", 404);
+  return deleted;
 };
 
 module.exports = {
