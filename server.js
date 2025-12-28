@@ -61,8 +61,8 @@ app.use(
         ],
       },
     },
-    crossOriginResourcePolicy: { policy: "cross-origin" }, // <--- Rasmlar uchun o'ta muhim
-    crossOriginEmbedderPolicy: false, // <--- Ba'zi brauzerlarda blokirovkani yechadi
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginEmbedderPolicy: false,
   })
 );
 app.use("/swagger", swaggerUi.serve, swaggerUi.setup(swaggerSpec));

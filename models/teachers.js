@@ -73,8 +73,15 @@ const teacherSchema = new mongoose.Schema(
     toJSON: {
       transform: (doc, ret) => {
         delete ret.__v;
-        delete ret.createdBy;
         delete ret.isActive;
+
+        // Agar rasm bo'lsa, to'liq CDN link yasaymiz
+        if (ret.photo) {
+          ret.photoUrl = `https://ucarecdn.com/${ret.photo}/`;
+          // Kichik avatar uchun:
+          ret.photoAvatar = `https://ucarecdn.com/${ret.photo}/-/scale_crop/200x200/smart/`;
+        }
+
         return ret;
       },
     },

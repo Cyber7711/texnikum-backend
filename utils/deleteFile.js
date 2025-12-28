@@ -6,8 +6,7 @@ const deleteFromCloud = async (uuid) => {
   try {
     await axios.delete(`https://api.uploadcare.com/files/${uuid}/`, {
       headers: {
-        Authorization:
-          "Uploadcare.Account cfdd5a9996f2d83995d9:0f2c3168a2960db0efc3",
+        Authorization: `Uploadcare.Account ${process.env.UPLOADCARE_PUBLIC_KEY}:${process.env.UPLOADCARE_SECRET_KEY}`,
         Accept: "application/vnd.uploadcare-v0.7+json",
       },
     });

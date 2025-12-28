@@ -1,49 +1,44 @@
-const Teacher = require("../models/teachers");
+const Teacher = require("../models/teachers"); //
 const AppError = require("../utils/appError");
 const idValidator = require("../middleware/idValidator");
 
 class TeacherService {
-  // Yaratish
-  static async create(data, authorId) {
-    const teacher = await Teacher.create({
-      ...data,
-      author: authorId, // Agar modelda author bo'lsa
-    });
+  // 1. O'qituvchi yaratish
+  static async create(data) {
+    // Controllerda photoUUID tayyorlab beriladi
+    const teacher = await Teacher.create(data);
     return teacher;
   }
 
-  // Hammasini olish
+  // 2. Hammasini olish (Faqat faollarini)
   static async getAll() {
-    // isActive: true sharti o'chirilganlarni ko'rsatmaslik uchun
     return await Teacher.find({ isActive: true }).sort({ createdAt: -1 });
   }
 
-  // ID bo'yicha olish
+  // 3. ID bo'yicha olish
   static async getById(id) {
     idValidator(id);
     const teacher = await Teacher.findById(id);
-    if (!teacher) {
-      throw new AppError("O'qituvchi topilmadi", 404);
-    }
+    if (!teacher) throw new AppError("O'qituvchi topilmadi", 404);
     return teacher;
   }
 
-  // Yangilash
+  // 4. Yangilash
   static async update(id, updateData) {
     idValidator(id);
 
-    // Ruxsat berilgan maydonlar
+    // Faqat ruxsat berilgan maydonlarni filtrlaymiz
     const allowedFields = [
       "fullname",
       "subject",
       "experience",
       "email",
       "phone",
-      "photo",
+      "photo", // UUID sifatida keladi
       "isActive",
     ];
-    const filteredData = {};
 
+    const filteredData = {};
     Object.keys(updateData).forEach((key) => {
       if (allowedFields.includes(key)) {
         filteredData[key] = updateData[key];
@@ -55,27 +50,15 @@ class TeacherService {
       runValidators: true,
     });
 
-    if (!updated) {
-      throw new AppError("O'qituvchi topilmadi", 404);
-    }
+    if (!updated) throw new AppError("O'qituvchi topilmadi", 404);
     return updated;
   }
 
-  // O'chirish (Soft Delete)
+  // 5. O'chirish (Hard Delete)
   static async deleteTeacher(id) {
     idValidator(id);
-    // Bazadan butunlay o'chirmasdan, isActive: false qilamiz (Arxivlash)
     const deleted = await Teacher.findByIdAndDelete(id);
-
-    // Agar butunlay o'chirmoqchi bo'lsangiz, yuqoridagi qatorni o'chirib, buni yozing:
-    // const deleted = await Teacher.findByIdAndDelete(id);
-
-    if (!deleted) {
-      throw new AppError(
-        "O'qituvchi topilmadi yoki allaqachon o'chirilgan",
-        404
-      );
-    }
+    if (!deleted) throw new AppError("O'qituvchi topilmadi", 404);
     return deleted;
   }
 }

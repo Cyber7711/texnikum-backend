@@ -58,9 +58,14 @@ const newsSchema = new mongoose.Schema(
         delete ret.__v;
         delete ret.isActive;
         delete ret.author;
-        delete ret.imagePublicId;
 
-        // Frontend uchun qulay format
+        // UUID dan to'liq CDN URL yasaymiz
+        if (ret.image) {
+          ret.imageUrl = `https://ucarecdn.com/${ret.image}/`;
+          // Xohlasangiz transformatsiya qo'shishingiz mumkin:
+          ret.imagePreview = `https://ucarecdn.com/${ret.image}/-/preview/400x400/`;
+        }
+
         ret.date = ret.date.toLocaleDateString("uz-UZ", {
           year: "numeric",
           month: "long",
