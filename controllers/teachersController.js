@@ -72,6 +72,7 @@ const deleteTeacher = catchAsync(async (req, res) => {
   const teacher = await Teacher.findById(req.params.id);
 
   if (teacher?.photo) {
+    // Avval bulutdan, keyin bazadan
     await deleteFromCloud(teacher.photo);
   }
 
