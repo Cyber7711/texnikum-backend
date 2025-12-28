@@ -19,15 +19,29 @@ connectDB();
 const app = express();
 app.get("/favicon.ico", (req, res) => res.status(204).end());
 app.use(express.json({ limit: "10kb" }));
-app.use(
-  cors({
-    origin:
-      process.env.NODE_ENV === "production"
-        ? "https://texnikum.uz"
-        : "http://localhost:3000",
-    credentials: true,
-  })
-);
+const allowedOrigins = [
+  "http://localhost:5173", // Mahalliy frontend uchun
+  "http://localhost:3000",
+  "https://texnikum.uz", // SIZNING DOMENINGIZ
+];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Agar so'rov origin-siz bo'lsa (masalan, Postman), ruxsat beramiz
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error("CORS policy: Bu domenga ruxsat berilmagan."));
+    }
+  },
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  credentials: true,
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+
+app.use(cors(corsOptions));
 app.use("/swagger", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use(hpp());
