@@ -1,6 +1,6 @@
 const Teacher = require("../models/teachers");
 const AppError = require("../utils/appError");
-const mongoose = require("mongoose");
+const idValidator = require("../middleware/idValidator");
 
 class TeacherService {
   // Yaratish
@@ -20,9 +20,7 @@ class TeacherService {
 
   // ID bo'yicha olish
   static async getById(id) {
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      throw new AppError("Noto'g'ri ID formati", 400);
-    }
+    idValidator(id);
     const teacher = await Teacher.findById(id);
     if (!teacher) {
       throw new AppError("O'qituvchi topilmadi", 404);
@@ -32,9 +30,7 @@ class TeacherService {
 
   // Yangilash
   static async update(id, updateData) {
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      throw new AppError("Noto'g'ri ID formati", 400);
-    }
+    idValidator(id);
 
     // Ruxsat berilgan maydonlar
     const allowedFields = [
@@ -67,12 +63,9 @@ class TeacherService {
 
   // O'chirish (Soft Delete)
   static async deleteTeacher(id) {
+    idValidator(id);
     // Bazadan butunlay o'chirmasdan, isActive: false qilamiz (Arxivlash)
-    const deleted = await Teacher.findByIdAndUpdate(
-      id,
-      { isActive: false },
-      { new: true }
-    );
+    const deleted = await Teacher.findByIdAndDelete(id);
 
     // Agar butunlay o'chirmoqchi bo'lsangiz, yuqoridagi qatorni o'chirib, buni yozing:
     // const deleted = await Teacher.findByIdAndDelete(id);

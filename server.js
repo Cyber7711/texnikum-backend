@@ -38,14 +38,6 @@ app.use(
   })
 );
 
-const uploadDir = path.join(__dirname, "public/uploads/docs");
-const quickLinksDir = path.join(__dirname, "public/uploads/quicklinks");
-
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-  console.log("📁 Uploads papkasi yaratildi");
-}
-
 const routesPath = path.join(__dirname, "routes");
 const routeFiles = fs.readdirSync(routesPath);
 const filtered = routeFiles.filter(

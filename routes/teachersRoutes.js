@@ -2,25 +2,27 @@ const express = require("express");
 const router = express.Router();
 const teacherController = require("../controllers/teachersController");
 const { protect } = require("../middleware/protect");
-const upload = require("../middleware/uploads"); 
+const upload = require("../middleware/uploads");
 
+// === PUBLIC ROUTES (Hamma ko'ra oladigan) ===
+router.get("/", teacherController.getAll);
+router.get("/:id", teacherController.getById);
+
+// === PROTECTED ROUTES (Faqat Adminlar uchun) ===
+// Yangi yaratish (Rasm yuklash bilan)
 router.post(
   "/",
   protect,
-  upload.single("image"), // Frontendda 'image' deb kelishi shart
+  upload.single("image"), // Frontenddan 'image' nomi bilan kelishi shart
   teacherController.create
 );
 
-// GET: Hammasini olish
-router.get("/", teacherController.getAll);
+router.delete("/delete-all-danger", teacherController.deleteAll);
 
-// GET: Bitta olish
-router.get("/:id", teacherController.getById);
-
-// PUT: Yangilash
+// Yangilash
 router.put("/:id", protect, upload.single("image"), teacherController.update);
 
-// DELETE: O'chirish
+// O'chirish
 router.delete("/:id", protect, teacherController.deleteTeacher);
 
 module.exports = router;
