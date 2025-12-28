@@ -23,6 +23,7 @@ const allowedOrigins = [
   "http://localhost:5173", // Mahalliy frontend uchun
   "http://localhost:3000",
   "https://texnikum.uz", // SIZNING DOMENINGIZ
+  "https://www.texnikum.uz",
 ];
 
 const corsOptions = {
