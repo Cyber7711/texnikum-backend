@@ -20,38 +20,54 @@ const app = express();
 app.get("/favicon.ico", (req, res) => res.status(204).end());
 app.use(express.json({ limit: "10kb" }));
 const allowedOrigins = [
-  "http://localhost:5173", // Mahalliy frontend uchun
+  "http://localhost:5173",
   "http://localhost:3000",
-  "https://texnikum.uz", // SIZNING DOMENINGIZ
+  "https://texnikum.uz",
   "https://www.texnikum.uz",
+  "https://texnikum-backend.onrender.com", // O'zining linkini ham qo'shib qo'yamiz
 ];
 
-const corsOptions = {
-  origin: function (origin, callback) {
-    // Agar so'rov origin-siz bo'lsa (masalan, Postman), ruxsat beramiz
-    if (!origin) return callback(null, true);
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("CORS policy error"));
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  })
+);
 
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error("CORS policy: Bu domenga ruxsat berilmagan."));
-    }
-  },
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  credentials: true,
-  allowedHeaders: ["Content-Type", "Authorization"],
-};
-
-app.use(cors(corsOptions));
+// 2. Helmet sozlamalarini rasm ko'rinadigan qilib to'g'irlaymiz
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        // Uploadcare va boshqa rasm manbalariga ruxsat berish
+        imgSrc: [
+          "'self'",
+          "data:",
+          "https://ucarecdn.com",
+          "https://*.uploadcare.com",
+        ],
+        connectSrc: [
+          "'self'",
+          "https://ucarecdn.com",
+          "https://*.uploadcare.com",
+        ],
+      },
+    },
+    crossOriginResourcePolicy: { policy: "cross-origin" }, // <--- Rasmlar uchun o'ta muhim
+    crossOriginEmbedderPolicy: false, // <--- Ba'zi brauzerlarda blokirovkani yechadi
+  })
+);
 app.use("/swagger", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use(hpp());
-app.use(
-  helmet({
-    contentSecurityPolicy: false,
-    crossOriginResourcePolicy: { policy: "cross-origin" }, // <--- MANA SHU QATORNI QO'SHING
-  })
-);
 
 const routesPath = path.join(__dirname, "routes");
 const routeFiles = fs.readdirSync(routesPath);
