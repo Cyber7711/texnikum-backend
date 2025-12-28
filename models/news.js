@@ -58,19 +58,30 @@ const newsSchema = new mongoose.Schema(
         delete ret.__v;
         delete ret.isActive;
         delete ret.author;
+        delete ret.imagePublicId;
 
-        // UUID dan to'liq CDN URL yasaymiz
-        if (ret.image) {
-          ret.imageUrl = `https://ucarecdn.com/${ret.image}/`;
-          // Xohlasangiz transformatsiya qo'shishingiz mumkin:
-          ret.imagePreview = `https://ucarecdn.com/${ret.image}/-/preview/400x400/`;
+        // MUHIM: UUIDdan to'g'ri URL yasash
+        if (ret.image && ret.image.length > 5) {
+          const uuid = ret.image;
+          // Asil URL (Oxirida slesh bo'lishi shart!)
+          ret.imageUrl = `https://ucarecdn.com/${uuid}/`;
+          // Preview (Parametrlar va sleshlarning tartibi muhim)
+          ret.imagePreview = `https://ucarecdn.com/${uuid}/-/preview/400x400/-/quality/smart/`;
+
+          // Agar bazadagi UUIDni o'zini frontendga yubormoqchi bo'lmasangiz:
+          // delete ret.image;
+        } else {
+          ret.imageUrl = null;
+          ret.imagePreview = null;
         }
 
-        ret.date = ret.date.toLocaleDateString("uz-UZ", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        });
+        ret.date = ret.date
+          ? ret.date.toLocaleDateString("uz-UZ", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })
+          : null;
 
         return ret;
       },

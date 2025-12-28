@@ -74,12 +74,23 @@ const teacherSchema = new mongoose.Schema(
       transform: (doc, ret) => {
         delete ret.__v;
         delete ret.isActive;
+        delete ret.createdBy; // Agar service'da ishlatsangiz
 
-        // Agar rasm bo'lsa, to'liq CDN link yasaymiz
-        if (ret.photo) {
-          ret.photoUrl = `https://ucarecdn.com/${ret.photo}/`;
-          // Kichik avatar uchun:
-          ret.photoAvatar = `https://ucarecdn.com/${ret.photo}/-/scale_crop/200x200/smart/`;
+        // UUID dan to'liq CDN URL yasashda xatoga yo'l qo'ymaslik
+        if (ret.photo && ret.photo.length > 5) {
+          const uuid = ret.photo;
+
+          // Asil URL (Oxiridagi / belgisiga diqqat qiling!)
+          ret.photoUrl = `https://ucarecdn.com/${uuid}/`;
+
+          // Optimizatsiya qilingan avatar
+          ret.photoAvatar = `https://ucarecdn.com/${uuid}/-/scale_crop/200x200/smart/`;
+
+          // Foydalanuvchi chalkashmasligi uchun UUID maydonini o'chirib yuboramiz
+          // ret.photo = ret.photoUrl;
+        } else {
+          ret.photoUrl = null;
+          ret.photoAvatar = null;
         }
 
         return ret;
