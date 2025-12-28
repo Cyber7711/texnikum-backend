@@ -1,21 +1,19 @@
-// utils/uploadToCloud.js
-const { uploadFile } = require("@uploadcare/upload-client");
-
 const uploadToCloud = async (file) => {
   if (!file || !file.buffer) return null;
 
   try {
     const result = await uploadFile(file.buffer, {
-      publicKey: "cfdd5a9996f2d83995d9",
-      store: true, // doimiy saqlash
+      publicKey: `${process.env.UPLOADCARE_PUBLIC_KEY}`,
+      store: "1", // Ba'zi versiyalarda true o'rniga '1' (string) kiritish ishonchliroq
+      fileName: file.originalname,
     });
 
-    // ❗ Faqat UUID
+    console.log("🚀 Yuklangan fayl to'liq ma'lumoti:", result);
+    // result.isStored qiymatini terminalda tekshiring. U true bo'lishi kerak.
+
     return result.uuid;
   } catch (error) {
     console.error("❌ Uploadcare yuklashda xato:", error);
     throw error;
   }
 };
-
-module.exports = uploadToCloud;
