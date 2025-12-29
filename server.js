@@ -46,28 +46,31 @@ app.use(
   })
 );
 
-// 3. CORS - To'g'ri sozlangan linklar bilan
+// server.js (36-qator atrofi)
+
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
-  "https://texnikum3son.vercel.app",
+  "https://texnikum3son.vercel.app", // OXIRIDA SLESH BO'LMASIN
   "https://texnikum-backend.onrender.com",
 ];
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // 1. Brauzerdan bo'lmagan so'rovlarga (Postman/Server) ruxsat
+      // 1. Brauzerdan bo'lmagan so'rovlar (Postman) yoki Localhost uchun ruxsat
       if (!origin) return callback(null, true);
 
-      // 2. Kelayotgan origin oxiridagi sleshni olib tashlab tekshirish
-      const cleanOrigin = origin.endsWith("/") ? origin.slice(0, -1) : origin;
+      // 2. Kelayotgan origin oxiridagi sleshni olib tashlab solishtiramiz
+      const normalizedOrigin = origin.endsWith("/")
+        ? origin.slice(0, -1)
+        : origin;
 
-      if (allowedOrigins.includes(cleanOrigin)) {
+      if (allowedOrigins.includes(normalizedOrigin)) {
         callback(null, true);
       } else {
-        // MUHIM: Qaysi manzil bloklanayotganini Render logida ko'rish uchun:
-        console.error(`❌ CORS Bloklandi. Kelgan manzil: ${origin}`.red);
+        // MUHIM: Qaysi manzil xato berayotganini Render logida ko'rish uchun:
+        console.error(`❌ CORS BLOKLANDI! Kelgan manzil: ${origin}`.red);
         callback(new Error("CORS policy error"));
       }
     },
