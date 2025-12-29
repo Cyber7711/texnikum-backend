@@ -58,23 +58,23 @@ const allowedOrigins = [
 
 app.use(
   cors({
-    origin: (origin, callback) => {
-      // 1. Brauzerdan bo'lmagan so'rovlar (Postman) yoki Localhost uchun ruxsat
-      if (!origin) return callback(null, true);
+    origin: true, //(origin, callback) => {
+    //   // 1. Brauzerdan bo'lmagan so'rovlar (Postman) yoki Localhost uchun ruxsat
+    //   if (!origin) return callback(null, true);
 
-      // 2. Kelayotgan origin oxiridagi sleshni olib tashlab solishtiramiz
-      const normalizedOrigin = origin.endsWith("/")
-        ? origin.slice(0, -1)
-        : origin;
+    //   // 2. Kelayotgan origin oxiridagi sleshni olib tashlab solishtiramiz
+    //   const normalizedOrigin = origin.endsWith("/")
+    //     ? origin.slice(0, -1)
+    //     : origin;
 
-      if (allowedOrigins.includes(normalizedOrigin)) {
-        callback(null, true);
-      } else {
-        // MUHIM: Qaysi manzil xato berayotganini Render logida ko'rish uchun:
-        console.error(`❌ CORS BLOKLANDI! Kelgan manzil: ${origin}`.red);
-        callback(new Error("CORS policy error"));
-      }
-    },
+    //   if (allowedOrigins.includes(normalizedOrigin)) {
+    //     callback(null, true);
+    //   } else {
+    //     // MUHIM: Qaysi manzil xato berayotganini Render logida ko'rish uchun:
+    //     console.error(`❌ CORS BLOKLANDI! Kelgan manzil: ${origin}`.red);
+    //     callback(new Error("CORS policy error"));
+    //   }
+    // },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
