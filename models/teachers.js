@@ -51,6 +51,7 @@ const teacherSchema = new mongoose.Schema(
       type: String,
       required: [true, "Telefon raqami kiritilishi shart"],
       unique: true,
+      trim: true,
       match: [
         /^\+998\s?\d{2}\s?\d{3}\s?\d{2}\s?\d{2}$/,
         "Telefon raqami +998 formatida bo‘lishi kerak",
