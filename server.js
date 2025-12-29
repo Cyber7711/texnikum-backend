@@ -17,13 +17,41 @@ dotenv.config();
 connectDB();
 
 const app = express();
-app.get("/favicon.ico", (req, res) => res.status(204).end());
-app.use(express.json({ limit: "10kb" }));
+
+// 1. TRUST PROXY - Har doim eng tepada bo'lishi kerak (Render/Vercel uchun)
+app.set("trust proxy", 1);
+
+// 2. HELMET (CORS dan oldin yoki keyin, lekin routelardan oldin)
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        imgSrc: [
+          "'self'",
+          "data:",
+          "https://ucarecdn.com",
+          "https://*.uploadcare.com",
+        ],
+        connectSrc: [
+          "'self'",
+          "https://ucarecdn.com",
+          "https://*.uploadcare.com",
+          "https://texnikum-backend.onrender.com",
+        ],
+      },
+    },
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginEmbedderPolicy: false,
+  })
+);
+
+// 3. CORS - To'g'ri sozlangan linklar bilan
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
-  "https://texnikum3son.vercel.app/",
-  "https://texnikum-backend.onrender.com", // O'zining linkini ham qo'shib qo'yamiz
+  "https://texnikum3son.vercel.app", // Oxirida slesh bo'lmasin
+  "https://texnikum-backend.onrender.com",
 ];
 
 app.use(
@@ -36,91 +64,60 @@ app.use(
       }
     },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
-// 2. Helmet sozlamalarini rasm ko'rinadigan qilib to'g'irlaymiz
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        // Uploadcare va boshqa rasm manbalariga ruxsat berish
-        imgSrc: [
-          "'self'",
-          "data:",
-          "https://ucarecdn.com",
-          "https://*.uploadcare.com",
-        ],
-        connectSrc: [
-          "'self'",
-          "https://ucarecdn.com",
-          "https://*.uploadcare.com",
-        ],
-      },
-    },
-    crossOriginResourcePolicy: { policy: "cross-origin" },
-    crossOriginEmbedderPolicy: false,
-  })
-);
-app.use("/swagger", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
+app.use(express.json({ limit: "10kb" }));
 app.use(hpp());
 
-const routesPath = path.join(__dirname, "routes");
-const routeFiles = fs.readdirSync(routesPath);
-const filtered = routeFiles.filter(
-  (f) => f.endsWith("Routes.js") && f !== "authRoutes.js"
-);
-console.log("Loaded route files:", filtered);
+// 4. RATE LIMITER - Routelardan oldin e'lon qilinishi kerak
+const limiter = rateLimit({
+  max: 200, // Limitni biroz oshirdik
+  windowMs: 60 * 60 * 1000,
+  message: "Juda ko'p so'rov yuborildi, keyinroq qayta urinib ko'ring".red,
+});
+// Faqat /api bilan boshlanadigan yo'llarga qo'llaymiz
+app.use("/api", limiter);
 
-for (const file of filtered) {
-  const routeName = file.replace("Routes.js", "");
-  const route = require(path.join(routesPath, file));
-  app.use(`/${routeName}`, route);
+// 5. ROUTES - Dinamik yuklash
+const routesPath = path.join(__dirname, "routes");
+if (fs.existsSync(routesPath)) {
+  const routeFiles = fs.readdirSync(routesPath);
+  const filtered = routeFiles.filter(
+    (f) => f.endsWith("Routes.js") && f !== "authRoutes.js"
+  );
+
+  filtered.forEach((file) => {
+    const routeName = file.replace("Routes.js", "").toLowerCase();
+    const route = require(path.join(routesPath, file));
+    app.use(`/api/${routeName}`, route); // Standart bo'yicha /api/ qo'shildi
+  });
 }
 
-const limiter = rateLimit({
-  max: 100,
-  windowMs: 60 * 60 * 1000,
-  message: "Juda kop surovlar yuborildi, Keyinroq qayta urinib koring".red,
-});
-app.use("/api", limiter);
-app.set("trust proxy", 1);
-
+// 6. AUTH ROUTES
 const authLimiter = rateLimit({
-  max: 5,
+  max: 20, // Test vaqti ko'proq imkoniyat
   windowMs: 15 * 60 * 1000,
-  message: "Kop urinish.15 daqiqadan keyin qayta urinib kuring".red,
+  message: "Ko'p urinish. 15 daqiqadan keyin qayta urinib ko'ring".red,
 });
-app.use("/auth", authLimiter, authRoutes);
+app.use("/api/auth", authLimiter, authRoutes);
 
+// Swagger
+app.use("/swagger", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+// Asosiy tekshiruv yo'li
 app.get("/", (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "Texnikum ishlayapti",
-    uptime: process.uptime(),
-    timestamp: new Date().toISOString(),
-  });
-});
-
-app.get("/error-test", (req, res, next) => {
-  next(new Error("Bu test xato"));
-});
-
-app.use((err, req, res, next) => {
-  console.error("Xatolik:".red, err.stack);
-  res.status(500).json({ message: err.message });
+  res.status(200).json({ success: true, message: "Texnikum API ishlayapti" });
 });
 
 app.use((req, res, next) => {
   next(new AppError(`URL topilmadi: ${req.originalUrl}`.red, 404));
 });
-
 app.use(globalErrorHandler);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(` Server ${PORT}-portda ishga tushdi`.green);
+  console.log(`🚀 Server ${PORT}-portda ishga tushdi`.green);
 });
