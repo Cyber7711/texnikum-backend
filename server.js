@@ -51,7 +51,8 @@ app.use(
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
-  "https://texnikum3son.vercel.app", // OXIRIDA SLESH BO'LMASIN
+  "https://texnikum3son.vercel.app",
+  "https://texnikum3son.vercel.app/", // OXIRIDA SLESH BO'LMASIN
   "https://texnikum-backend.onrender.com",
 ];
 
