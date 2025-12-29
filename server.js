@@ -22,8 +22,7 @@ app.use(express.json({ limit: "10kb" }));
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
-  "https://texnikum.uz",
-  "https://www.texnikum.uz",
+  "https://texnikum3son.vercel.app/",
   "https://texnikum-backend.onrender.com", // O'zining linkini ham qo'shib qo'yamiz
 ];
 
