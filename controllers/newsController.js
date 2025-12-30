@@ -1,29 +1,34 @@
 const NewsService = require("../services/newsService");
 const AppError = require("../utils/appError");
 const catchAsync = require("../middleware/catchAsync");
-const uploadToCloud = require("../utils/upload"); //
-const deleteFromCloud = require("../utils/deleteFile"); //
+const uploadToCloud = require("../utils/upload");
+const deleteFromCloud = require("../utils/deleteFile");
 
 // 1. Yangilik yaratish
 exports.createNews = catchAsync(async (req, res, next) => {
   let imageUUID = null;
 
-  // Rasm bo'lsa, uni Uploadcare'ga yuklaymiz
+  // Agar rasm yuklangan bo'lsa (MemoryStorage'dan Buffer orqali)
   if (req.file) {
-    imageUUID = await uploadToCloud(req.file); //
+    imageUUID = await uploadToCloud(req.file);
   }
 
+  // Admin tekshiruvi (Protect middleware'dan keladi)
   if (!req.user || !req.user._id) {
-    return next(new AppError("Avtorizatsiyadan o'tilmagan!", 401));
+    return next(
+      new AppError("Avtorizatsiyadan o'tilmagan! Iltimos, qayta kiring.", 401)
+    );
   }
 
   const newsData = {
     title: req.body.title,
     content: req.body.content,
-    image: imageUUID, // Bazada faqat UUID saqlanadi
+    image: imageUUID, // Bazada faqat UUID string saqlanadi
+    // Agar modelingizda author bo'lsa:
+    author: req.user._id,
   };
 
-  const result = await NewsService.createNews(newsData, req.user._id); //
+  const result = await NewsService.createNews(newsData);
 
   res.status(201).json({
     status: "success",
@@ -34,7 +39,7 @@ exports.createNews = catchAsync(async (req, res, next) => {
 
 // 2. Barcha yangiliklarni olish
 exports.getAllNews = catchAsync(async (req, res, next) => {
-  const result = await NewsService.getAllNews(); //
+  const result = await NewsService.getAllNews();
 
   res.status(200).json({
     status: "success",
@@ -45,7 +50,7 @@ exports.getAllNews = catchAsync(async (req, res, next) => {
 
 // 3. ID bo'yicha bitta yangilikni olish
 exports.getNewsById = catchAsync(async (req, res, next) => {
-  const result = await NewsService.getNewsById(req.params.id); //
+  const result = await NewsService.getNewsById(req.params.id);
 
   res.status(200).json({
     status: "success",
@@ -53,24 +58,29 @@ exports.getNewsById = catchAsync(async (req, res, next) => {
   });
 });
 
-// 4. Yangilikni tahrirlash (Rasm yangilansa, eskisini o'chirish bilan)
+// 4. Yangilikni tahrirlash
 exports.updateNews = catchAsync(async (req, res, next) => {
-  // Avval eski ma'lumotlarni tekshiramiz
+  // 1. Avval yangilik borligini tekshiramiz
   const oldNews = await NewsService.getNewsById(req.params.id);
 
-  // Agar yangi rasm yuklangan bo'lsa
-  if (req.file) {
-    // Yangisini bulutga yuklaymiz
-    const newImageUUID = await uploadToCloud(req.file);
-    req.body.image = newImageUUID;
+  // 2. Yangilanishi kerak bo'lgan ma'lumotlar
+  let updateData = { ...req.body };
 
-    // Agar eski rasm bo'lsa, uni bulutdan o'chiramiz
+  // 3. Agar yangi rasm yuklangan bo'lsa
+  if (req.file) {
+    // Yangi rasmni bulutga yuklaymiz
+    const newImageUUID = await uploadToCloud(req.file);
+    updateData.image = newImageUUID;
+
+    // Eski rasmni o'chiramiz (Orqa fonda, xatolik bo'lsa to'xtatmaymiz)
     if (oldNews.image) {
-      await deleteFromCloud(oldNews.image);
+      deleteFromCloud(oldNews.image).catch((err) =>
+        console.error("Eski rasmni o'chirishda xato:", err)
+      );
     }
   }
 
-  const result = await NewsService.updateNews(req.params.id, req.body); //
+  const result = await NewsService.updateNews(req.params.id, updateData);
 
   res.status(200).json({
     status: "success",
@@ -79,17 +89,16 @@ exports.updateNews = catchAsync(async (req, res, next) => {
   });
 });
 
-// 5. O'chirish (Rasmni ham bulutdan o'chirish bilan)
+// 5. O'chirish
 exports.deleteNews = catchAsync(async (req, res, next) => {
-  // O'chirishdan oldin yangilikni topib, rasmini tekshiramiz
   const news = await NewsService.getNewsById(req.params.id);
 
-  // Agar rasm mavjud bo'lsa, Uploadcare'dan o'chiramiz
+  // Rasmni bulutdan o'chiramiz
   if (news.image) {
     await deleteFromCloud(news.image);
   }
 
-  await NewsService.deleteNews(req.params.id); //
+  await NewsService.deleteNews(req.params.id);
 
   res.status(204).json({
     status: "success",

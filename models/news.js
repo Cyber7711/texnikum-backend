@@ -57,7 +57,6 @@ const newsSchema = new mongoose.Schema(
       transform: (doc, ret) => {
         delete ret.__v;
         delete ret.isActive;
-        delete ret.author;
         delete ret.imagePublicId;
 
         // MUHIM: UUIDdan to'g'ri URL yasash

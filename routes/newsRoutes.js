@@ -1,24 +1,28 @@
 const express = require("express");
 const router = express.Router();
 const newsController = require("../controllers/newsController");
-const upload = require("../middleware/uploads"); // Sizning Multer sozlangan faylingiz
-const { protect } = require("../middleware/protect"); // Admin himoyasi bo'lsa
+const upload = require("../middleware/uploads"); // MemoryStorage versiyasi
+const { protect } = require("../middleware/protect");
 
-router.route("/").get(newsController.getAllNews).post(
+// === PUBLIC ROUTES (Hamma ko'ra oladi) ===
+router.get("/", newsController.getAllNews);
+router.get("/:id", newsController.getNewsById);
+
+// === PROTECTED ROUTES (Faqat Admin) ===
+router.post(
+  "/",
   protect,
-  upload.single("image"), // 'image' nomli faylni RAM'ga yuklaydi
+  upload.single("image"), // Frontendda formData.append('image', file) bo'lishi kerak
   newsController.createNews
 );
 
-router
-  .route("/:id")
-  .get(newsController.getNewsById)
-  .patch(
-    protect,
+router.patch(
+  "/:id",
+  protect,
+  upload.single("image"),
+  newsController.updateNews
+);
 
-    upload.single("image"),
-    newsController.updateNews
-  )
-  .delete(protect, newsController.deleteNews);
+router.delete("/:id", protect, newsController.deleteNews);
 
 module.exports = router;
