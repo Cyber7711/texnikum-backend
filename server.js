@@ -32,6 +32,7 @@ app.use(
           "data:",
           "https://ucarecdn.com",
           "https://*.uploadcare.com",
+          "https://ui-avatars.com",
         ],
         connectSrc: [
           "'self'",
