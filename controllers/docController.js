@@ -2,11 +2,12 @@ const DocService = require("../services/docService");
 const Document = require("../models/documents");
 const catchAsync = require("../middleware/catchAsync");
 const sendResponse = require("../middleware/sendResponse");
+const uploadToCloud = require("../utils/upload");
 const deleteFromCloud = require("../utils/deleteFile");
 const AppError = require("../utils/appError");
 
-// 1. Hammasini olish (O'zgarishsiz)
-const getAll = catchAsync(async (req, res) => {
+// 1. Hammasini olish
+exports.getAll = catchAsync(async (req, res) => {
   const result = await DocService.getAllDocs(req.query);
   sendResponse(res, {
     status: 200,
@@ -15,29 +16,27 @@ const getAll = catchAsync(async (req, res) => {
   });
 });
 
-// 2. ID bo'yicha olish (O'zgarishsiz)
-const getById = catchAsync(async (req, res) => {
+// 2. ID bo'yicha olish
+exports.getById = catchAsync(async (req, res) => {
   const result = await DocService.getDocById(req.params.id);
   sendResponse(res, { status: 200, data: result });
 });
 
-// 3. Yaratish (MUHIM O'ZGARISHLAR)
-const create = catchAsync(async (req, res, next) => {
-  const { title, category, file, fileType, fileSize } = req.body;
-
-  // Xavfsizlik chorasi: file maydonini tekshirish
-  if (!file || typeof file === "object") {
-    return next(
-      new AppError("Fayl noto'g'ri formatda yuborildi. UUID kutilmoqda.", 400)
-    );
+// 3. Yaratish (Backend-side upload)
+exports.create = catchAsync(async (req, res, next) => {
+  if (!req.file) {
+    return next(new AppError("Fayl yuklanishi shart!", 400));
   }
 
+  // Faylni bulutga yuklash
+  const fileUUID = await uploadToCloud(req.file);
+
   const docData = {
-    title,
-    category,
-    file: String(file), // Majburiy stringga o'tkazish
-    fileType,
-    fileSize,
+    title: req.body.title,
+    category: req.body.category,
+    file: fileUUID,
+    fileType: req.file.originalname.split(".").pop().toLowerCase(),
+    fileSize: req.file.size,
     createdBy: req.user._id,
   };
 
@@ -50,27 +49,26 @@ const create = catchAsync(async (req, res, next) => {
   });
 });
 
-// 4. Yangilash (MUHIM O'ZGARISHLAR)
-const update = catchAsync(async (req, res, next) => {
-  const { file } = req.body;
+// 4. Yangilash (Fayl bilan yoki faylsiz)
+exports.update = catchAsync(async (req, res, next) => {
   const oldDoc = await Document.findById(req.params.id);
-
   if (!oldDoc) return next(new AppError("Hujjat topilmadi", 404));
 
-  // Agar yangi fayl kelgan bo'lsa va u ob'ekt bo'lsa, xato beramiz
-  if (file && typeof file === "object") {
-    return next(new AppError("Fayl UUID formatida bo'lishi shart", 400));
-  }
+  const updateData = { ...req.body };
 
-  if (file && oldDoc.file !== file) {
+  // Agar yangi fayl yuklangan bo'lsa
+  if (req.file) {
+    // 1. Yangi faylni bulutga yuklash
+    const newFileUUID = await uploadToCloud(req.file);
+    updateData.file = newFileUUID;
+    updateData.fileType = req.file.originalname.split(".").pop().toLowerCase();
+    updateData.fileSize = req.file.size;
+
+    // 2. Eski faylni bulutdan o'chirish
     if (oldDoc.file) {
       await deleteFromCloud(oldDoc.file);
     }
   }
-
-  // Faqat kerakli maydonlarni yangilash
-  const updateData = { ...req.body };
-  if (file) updateData.file = String(file); // Majburiy string
 
   const result = await DocService.updateDoc(req.params.id, updateData);
 
@@ -81,17 +79,21 @@ const update = catchAsync(async (req, res, next) => {
   });
 });
 
-// 5. O'chirish (O'zgarishsiz)
-const deleteDoc = catchAsync(async (req, res) => {
+// 5. O'chirish
+exports.deleteDoc = catchAsync(async (req, res, next) => {
   const doc = await Document.findById(req.params.id);
-  if (doc?.file) {
+  if (!doc) return next(new AppError("Hujjat topilmadi", 404));
+
+  // Bulutdan o'chirish
+  if (doc.file) {
     await deleteFromCloud(doc.file);
   }
+
+  // Bazadan o'chirish (yoki soft-delete)
   await DocService.deleteDoc(req.params.id);
+
   sendResponse(res, {
     status: 200,
     message: "Hujjat bazadan va bulutdan o'chirildi",
   });
 });
-
-module.exports = { getAll, getById, create, update, deleteDoc };
