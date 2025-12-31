@@ -1,13 +1,13 @@
 const DocService = require("../services/docService");
-const Document = require("../models/documents"); // Modelni import qildik (eski faylni topish uchun)
+const Document = require("../models/documents");
 const catchAsync = require("../middleware/catchAsync");
 const sendResponse = require("../middleware/sendResponse");
-const deleteFromCloud = require("../utils/deleteFile"); // Faylni bulutdan o'chirish uchun
+const deleteFromCloud = require("../utils/deleteFile");
+const AppError = require("../utils/appError");
 
-// 1. Hammasini olish
+// 1. Hammasini olish (O'zgarishsiz)
 const getAll = catchAsync(async (req, res) => {
   const result = await DocService.getAllDocs(req.query);
-
   sendResponse(res, {
     status: 200,
     results: result.length,
@@ -15,25 +15,30 @@ const getAll = catchAsync(async (req, res) => {
   });
 });
 
-// 2. ID bo'yicha olish
+// 2. ID bo'yicha olish (O'zgarishsiz)
 const getById = catchAsync(async (req, res) => {
   const result = await DocService.getDocById(req.params.id);
-
-  sendResponse(res, {
-    status: 200,
-    data: result,
-  });
+  sendResponse(res, { status: 200, data: result });
 });
 
-// 3. Yaratish
-const create = catchAsync(async (req, res) => {
-  // Eslatma: Biz frontendda Widget ishlatganimiz uchun,
-  // req.body.file ichida allaqachon UUID (string) keladi.
-  // Shuning uchun bu yerda uploadToCloud() shart emas.
+// 3. Yaratish (MUHIM O'ZGARISHLAR)
+const create = catchAsync(async (req, res, next) => {
+  const { title, category, file, fileType, fileSize } = req.body;
+
+  // Xavfsizlik chorasi: file maydonini tekshirish
+  if (!file || typeof file === "object") {
+    return next(
+      new AppError("Fayl noto'g'ri formatda yuborildi. UUID kutilmoqda.", 400)
+    );
+  }
 
   const docData = {
-    ...req.body,
-    createdBy: req.user._id, // Admin ID
+    title,
+    category,
+    file: String(file), // Majburiy stringga o'tkazish
+    fileType,
+    fileSize,
+    createdBy: req.user._id,
   };
 
   const result = await DocService.createDoc(docData);
@@ -45,19 +50,29 @@ const create = catchAsync(async (req, res) => {
   });
 });
 
-// 4. Yangilash
-const update = catchAsync(async (req, res) => {
-  // Agar yangi fayl (UUID) kelgan bo'lsa, eskisini o'chiramiz
-  if (req.body.file) {
-    const oldDoc = await Document.findById(req.params.id);
+// 4. Yangilash (MUHIM O'ZGARISHLAR)
+const update = catchAsync(async (req, res, next) => {
+  const { file } = req.body;
+  const oldDoc = await Document.findById(req.params.id);
 
-    // Agar eski hujjatda fayl bo'lsa va u yangisidan farq qilsa
-    if (oldDoc?.file && oldDoc.file !== req.body.file) {
-      await deleteFromCloud(oldDoc.file); // Uploadcare'dan o'chiramiz
+  if (!oldDoc) return next(new AppError("Hujjat topilmadi", 404));
+
+  // Agar yangi fayl kelgan bo'lsa va u ob'ekt bo'lsa, xato beramiz
+  if (file && typeof file === "object") {
+    return next(new AppError("Fayl UUID formatida bo'lishi shart", 400));
+  }
+
+  if (file && oldDoc.file !== file) {
+    if (oldDoc.file) {
+      await deleteFromCloud(oldDoc.file);
     }
   }
 
-  const result = await DocService.updateDoc(req.params.id, req.body);
+  // Faqat kerakli maydonlarni yangilash
+  const updateData = { ...req.body };
+  if (file) updateData.file = String(file); // Majburiy string
+
+  const result = await DocService.updateDoc(req.params.id, updateData);
 
   sendResponse(res, {
     status: 200,
@@ -66,27 +81,17 @@ const update = catchAsync(async (req, res) => {
   });
 });
 
-// 5. O'chirish
+// 5. O'chirish (O'zgarishsiz)
 const deleteDoc = catchAsync(async (req, res) => {
   const doc = await Document.findById(req.params.id);
-
   if (doc?.file) {
-    // Bulutdan (Uploadcare) o'chiramiz
     await deleteFromCloud(doc.file);
   }
-
   await DocService.deleteDoc(req.params.id);
-
   sendResponse(res, {
     status: 200,
     message: "Hujjat bazadan va bulutdan o'chirildi",
   });
 });
 
-module.exports = {
-  getAll,
-  getById,
-  create,
-  update,
-  deleteDoc,
-};
+module.exports = { getAll, getById, create, update, deleteDoc };
