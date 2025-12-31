@@ -1,116 +1,92 @@
-// controllers/docController.js
-const docService = require("../services/docService");
-const AppError = require("../utils/appError");
-const path = require("path");
+const DocService = require("../services/docService");
+const Document = require("../models/documents"); // Modelni import qildik (eski faylni topish uchun)
+const catchAsync = require("../middleware/catchAsync");
+const sendResponse = require("../middleware/sendResponse");
+const deleteFromCloud = require("../utils/deleteFile"); // Faylni bulutdan o'chirish uchun
 
-const createDoc = async (req, res, next) => {
-  try {
-    // 1. Fayl yuklanganini tekshirish
-    if (!req.file) {
-      return next(new AppError("Fayl yuklanishi shart!", 400));
+// 1. Hammasini olish
+const getAll = catchAsync(async (req, res) => {
+  const result = await DocService.getAllDocs(req.query);
+
+  sendResponse(res, {
+    status: 200,
+    results: result.length,
+    data: result,
+  });
+});
+
+// 2. ID bo'yicha olish
+const getById = catchAsync(async (req, res) => {
+  const result = await DocService.getDocById(req.params.id);
+
+  sendResponse(res, {
+    status: 200,
+    data: result,
+  });
+});
+
+// 3. Yaratish
+const create = catchAsync(async (req, res) => {
+  // Eslatma: Biz frontendda Widget ishlatganimiz uchun,
+  // req.body.file ichida allaqachon UUID (string) keladi.
+  // Shuning uchun bu yerda uploadToCloud() shart emas.
+
+  const docData = {
+    ...req.body,
+    createdBy: req.user._id, // Admin ID
+  };
+
+  const result = await DocService.createDoc(docData);
+
+  sendResponse(res, {
+    status: 201,
+    message: "Hujjat muvaffaqiyatli saqlandi",
+    data: result,
+  });
+});
+
+// 4. Yangilash
+const update = catchAsync(async (req, res) => {
+  // Agar yangi fayl (UUID) kelgan bo'lsa, eskisini o'chiramiz
+  if (req.body.file) {
+    const oldDoc = await Document.findById(req.params.id);
+
+    // Agar eski hujjatda fayl bo'lsa va u yangisidan farq qilsa
+    if (oldDoc?.file && oldDoc.file !== req.body.file) {
+      await deleteFromCloud(oldDoc.file); // Uploadcare'dan o'chiramiz
     }
-
-    // 2. Fayl turini aniqlash (pdf, docx...)
-    const fileExtension = path
-      .extname(req.file.originalname)
-      .substring(1)
-      .toLowerCase();
-
-    // 3. Service uchun ma'lumotlarni tayyorlash
-    const docData = {
-      title: req.body.title,
-      category: req.body.category, // Frontenddan keladigan kategoriya
-      file: `/uploads/docs/${req.file.filename}`, // Bazaga nisbiy yo'l yoziladi
-      fileType: fileExtension,
-      fileSize: req.file.size,
-    };
-
-    // 4. Admin ID ni olish (protect middleware dan keladi)
-    const adminId = req.user._id;
-
-    const result = await docService.createDoc(docData, adminId);
-
-    res.status(201).json({
-      success: true,
-      message: "Hujjat muvaffaqiyatli yuklandi",
-      data: result,
-    });
-  } catch (err) {
-    return next(err);
   }
-};
 
-const getAllDocs = async (req, res, next) => {
-  try {
-    const result = await docService.getAllDocs(req.query); // Query params (search, filter) uchun
-    res.status(200).json({
-      success: true,
-      count: result.length,
-      data: result,
-    });
-  } catch (err) {
-    return next(err);
+  const result = await DocService.updateDoc(req.params.id, req.body);
+
+  sendResponse(res, {
+    status: 200,
+    message: "Hujjat ma'lumotlari yangilandi",
+    data: result,
+  });
+});
+
+// 5. O'chirish
+const deleteDoc = catchAsync(async (req, res) => {
+  const doc = await Document.findById(req.params.id);
+
+  if (doc?.file) {
+    // Bulutdan (Uploadcare) o'chiramiz
+    await deleteFromCloud(doc.file);
   }
-};
 
-const getDocById = async (req, res, next) => {
-  try {
-    const result = await docService.getDocById(req.params.id);
-    res.status(200).json({
-      success: true,
-      data: result,
-    });
-  } catch (err) {
-    return next(err);
-  }
-};
+  await DocService.deleteDoc(req.params.id);
 
-const updateDoc = async (req, res, next) => {
-  try {
-    const updateData = { ...req.body };
-
-    // Agar yangi fayl yuklangan bo'lsa, uni ham yangilaymiz
-    if (req.file) {
-      updateData.file = `/uploads/docs/${req.file.filename}`;
-      updateData.fileType = path
-        .extname(req.file.originalname)
-        .substring(1)
-        .toLowerCase();
-      updateData.fileSize = req.file.size;
-    }
-
-    const result = await docService.updateDoc(
-      req.params.id,
-      updateData,
-      req.user._id
-    );
-
-    res.status(200).json({
-      success: true,
-      message: "Hujjat muvaffaqiyatli yangilandi",
-      data: result,
-    });
-  } catch (err) {
-    return next(err);
-  }
-};
-
-const deleteDoc = async (req, res, next) => {
-  try {
-    await docService.deleteDoc(req.params.id);
-    res.status(200).json({
-      success: true,
-      message: "Hujjat muvaffaqiyatli o'chirildi",
-    });
-  } catch (err) {
-    return next(err);
-  }
-};
+  sendResponse(res, {
+    status: 200,
+    message: "Hujjat bazadan va bulutdan o'chirildi",
+  });
+});
 
 module.exports = {
-  createDoc,
-  getAllDocs,
-  getDocById,
-  updateDoc,
+  getAll,
+  getById,
+  create,
+  update,
   deleteDoc,
 };

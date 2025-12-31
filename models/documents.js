@@ -1,4 +1,3 @@
-// models/documents.js
 const mongoose = require("mongoose");
 
 const documentSchema = new mongoose.Schema(
@@ -7,47 +6,33 @@ const documentSchema = new mongoose.Schema(
       type: String,
       required: [true, "Hujjat sarlavhasi kiritilishi shart"],
       trim: true,
-      minlength: [3, "Sarlavha kamida 3 belgidan iborat bo‘lishi kerak"],
-      maxlength: [150, "Sarlavha 150 belgidan oshmasligi kerak"],
+      maxlength: [200, "Sarlavha 200 belgidan oshmasligi kerak"],
     },
     category: {
       type: String,
       required: [true, "Kategoriya tanlanishi shart"],
-      enum: ["nizom", "qaror", "buyruq", "metodik"], // Frontenddagi variantlar bilan mos
-      trim: true,
+      enum: {
+        values: ["nizom", "qaror", "buyruq", "metodik"],
+        message: "Kategoriya noto'g'ri tanlandi",
+      },
     },
     file: {
-      type: String, // Fayl yo'li (path)
-      required: [true, "Fayl yuklanishi shart"],
-      trim: true,
+      type: String, // Uploadcare UUID
+      required: [true, "Fayl UUID kiritilishi shart"],
     },
     fileType: {
       type: String,
-      enum: [
-        "pdf",
-        "doc",
-        "docx",
-        "xls",
-        "xlsx",
-        "ppt",
-        "pptx",
-        "jpg",
-        "jpeg",
-        "png",
-        "txt",
-        "zip",
-        "rar",
-      ],
-      required: [true, "Fayl turi aniqlanishi kerak"],
+      lowercase: true,
+      default: "pdf",
     },
     fileSize: {
-      type: Number, // byte da
-      max: [20 * 1024 * 1024, "Fayl hajmi 20 MB dan oshmasligi kerak"],
+      type: Number,
+      default: 0,
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Admin", // Yoki "User", tizimingizdagi admin model nomiga qarab
-      required: true,
+      ref: "Admin",
+      required: [true, "Hujjat egasi (Admin) ko'rsatilishi shart"],
     },
     isActive: {
       type: Boolean,
@@ -57,13 +42,9 @@ const documentSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-    collection: "documents",
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   }
 );
-
-// Indekslar
-documentSchema.index({ title: 1 });
-documentSchema.index({ category: 1 }); // Kategoriya bo'yicha qidiruv uchun
-documentSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model("Document", documentSchema);
