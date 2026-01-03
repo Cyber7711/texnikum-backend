@@ -1,42 +1,36 @@
 const express = require("express");
 const dotenv = require("dotenv");
 const connectDB = require("./config/db");
-require("colors"); // Loglar rangli chiqishi uchun
+require("colors");
 const cors = require("cors");
-const mongoSanitize = require("express-mongo-sanitize");
+// const mongoSanitize = require("express-mongo-sanitize"); // <-- BUNI O'CHIRDIK (Xato manbai)
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const path = require("path");
-const hpp = require("hpp"); // Agar xato bersa, buni o'chiramiz
+// const hpp = require("hpp"); // <-- BUNI HAM O'CHIRDIK
 
 const globalErrorHandler = require("./controllers/errorController");
 const AppError = require("./utils/appError");
-const allRoutes = require("./routes/index"); // Markaziy marshrutlar
+const allRoutes = require("./routes/index");
 const { swaggerUi, swaggerSpec } = require("./swagger");
 
-// Muhit o'zgaruvchilarini yuklash
 dotenv.config();
-
-// Bazaga ulanish
 connectDB();
 
 const app = express();
 
 // ============================================================
-// 1. GLOBAL SECURITY VA SOZLAMALAR
+// 1. GLOBAL SECURITY
 // ============================================================
 
-// Trust Proxy (Render/Heroku/Vercel uchun muhim)
 app.set("trust proxy", 1);
 
-// Helmet - HTTP sarlavhalarini himoyalaydi
 app.use(
   helmet({
-    crossOriginResourcePolicy: false, // Rasmlar ko'rinishi uchun
+    crossOriginResourcePolicy: false,
   })
 );
 
-// CORS Sozlamalari
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
@@ -46,7 +40,6 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Postman yoki Server-to-Server so'rovlar uchun (!origin) ruxsat beramiz
       if (!origin || allowedOrigins.includes(origin.replace(/\/$/, ""))) {
         callback(null, true);
       } else {
@@ -55,89 +48,88 @@ app.use(
       }
     },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
 // ============================================================
-// 2. PARSERS (BU YERDA TARTIB O'TA MUHIM)
+// 2. PARSERS
 // ============================================================
 
-// Body parser - JSON ma'lumotlarni o'qish (limit 10kb)
 app.use(express.json({ limit: "10kb" }));
-
-// URL Encoded parser - Form ma'lumotlarini o'qish
 app.use(express.urlencoded({ extended: true, limit: "10kb" }));
 
 // ============================================================
-// 3. SANITIZATION (TOZALASH)
+// 3. MANUAL SANITIZATION (QO'LBOLA TOZALASH - XATOSIZ)
 // ============================================================
 
-// NoSQL Injection himoyasi (req.body, req.query va req.params ni tozalaydi)
-// Masalan: email: {"$gt": ""} kabi hujumlarni oldini oladi
-app.use(mongoSanitize());
+// Biz 'express-mongo-sanitize' o'rniga o'zimizning middleware'ni yozamiz.
+// Bu req.query yoki req.body ni ALMASHTIRMAYDI, shunchaki ichini tekshiradi.
+app.use((req, res, next) => {
+  const clean = (obj) => {
+    for (const key in obj) {
+      if (typeof obj[key] === "object" && obj[key] !== null) {
+        clean(obj[key]); // Rekursiya
+      } else if (typeof key === "string" && key.startsWith("$")) {
+        // Agar kalit '$' bilan boshlansa (masalan $gt), uni o'chiramiz
+        delete obj[key];
+      }
+    }
+  };
 
-// HPP - Parameter Pollution himoyasi
-// DIQQAT: Agar yana "Cannot set property query" xatosi chiqsa,
-// pastdagi app.use(hpp()) qatorini o'chirib tashlang.
-// app.use(hpp());
+  if (req.body) clean(req.body);
+  // req.query-ni o'zgartirishga urinmaymiz, faqat ichidagi zararli qismlarni o'chiramiz
+  if (req.query) clean(req.query);
+  if (req.params) clean(req.params);
+
+  next();
+});
 
 // ============================================================
-// 4. RATE LIMITING (SPAM HIMOYASI)
+// 4. RATE LIMITING
 // ============================================================
 
 const limiter = rateLimit({
-  max: 150, // 15 daqiqada 150 ta so'rov
+  max: 150,
   windowMs: 15 * 60 * 1000,
   message: {
     status: "fail",
-    message:
-      "Juda ko'p so'rov yuborildi. Iltimos, 15 daqiqadan so'ng urinib ko'ring.",
+    message: "Juda ko'p so'rov. 15 daqiqadan keyin urinib ko'ring.",
   },
-  standardHeaders: true, // RateLimit-* headerlarini qaytarish
-  legacyHeaders: false, // X-RateLimit-* headerlarini o'chirish
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
-// Rate limiterni faqat /api yo'llariga qo'llash
 app.use("/api", limiter);
 
 // ============================================================
-// 5. ROUTES (MARSHRUTLAR)
+// 5. ROUTES
 // ============================================================
 
-// Swagger hujjatlari
 app.use("/swagger", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
-// Asosiy API yo'llari (v1 versiyasi)
 app.use("/api/v1", allRoutes);
 
-// Server ishlashini tekshirish uchun oddiy yo'l
 app.get("/", (req, res) => {
   res.status(200).json({
     status: "success",
-    message: "Texnikum API tizimi barqaror ishlamoqda",
-    timestamp: new Date(),
+    message: "Texnikum API ishlayapti",
   });
 });
 
 // ============================================================
-// 6. ERROR HANDLING (XATOLIKLAR)
+// 6. ERROR HANDLING
 // ============================================================
 
-// Topilmagan yo'llar uchun (404)
 app.use((req, res, next) => {
-  next(new AppError(`Ushbu manzil topilmadi: ${req.originalUrl}`, 404));
+  next(new AppError(`Manzil topilmadi: ${req.originalUrl}`, 404));
 });
 
-// Global xatolarni ushlab olish
 app.use(globalErrorHandler);
 
 // ============================================================
-// 7. SERVERNI ISHGA TUSHIRISH
+// 7. START SERVER
 // ============================================================
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🚀 Server ${PORT}-portda muvaffaqiyatli ishga tushdi`.cyan.bold);
+  console.log(`🚀 Server ${PORT}-portda ishga tushdi`.green.bold);
 });
