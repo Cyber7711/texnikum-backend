@@ -10,6 +10,7 @@ const applicantSchema = new mongoose.Schema(
     phone: {
       type: String,
       required: [true, "Telefon raqami kiritilishi shart"],
+      unique: true,
     },
     direction: {
       type: String,
