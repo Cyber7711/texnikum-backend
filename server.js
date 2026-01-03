@@ -81,7 +81,7 @@ app.use(mongoSanitize());
 // HPP - Parameter Pollution himoyasi
 // DIQQAT: Agar yana "Cannot set property query" xatosi chiqsa,
 // pastdagi app.use(hpp()) qatorini o'chirib tashlang.
-app.use(hpp());
+// app.use(hpp());
 
 // ============================================================
 // 4. RATE LIMITING (SPAM HIMOYASI)
