@@ -106,7 +106,7 @@ app.use("/api", limiter);
 // ============================================================
 
 app.use("/swagger", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-app.use("/api/v1", allRoutes);
+app.use("/api", allRoutes);
 
 app.get("/", (req, res) => {
   res.status(200).json({
