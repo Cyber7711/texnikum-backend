@@ -7,7 +7,7 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const cookieParser = require("cookie-parser");
 const mongoSanitize = require("express-mongo-sanitize");
-const xss = require("xss-clean");
+
 const hpp = require("hpp");
 const compression = require("compression");
 const morgan = require("morgan"); // 🛡️ Loglar uchun (kim hujum qilayotganini ko'rish uchun)
@@ -16,6 +16,34 @@ const globalErrorHandler = require("./controllers/errorController");
 const AppError = require("./utils/appError");
 const allRoutes = require("./routes/index");
 const { swaggerUi, swaggerSpec } = require("./swagger");
+const createDOMPurify = require("dompurify");
+const { JSDOM } = require("jsdom");
+const window = new JSDOM("").window;
+const DOMPurify = createDOMPurify(window);
+
+// Xavfsiz tozalash middleware'i (req.query-ni qulatmaydi!)
+const xssCleaner = (req, res, next) => {
+  const sanitize = (obj) => {
+    if (typeof obj === "string") {
+      return DOMPurify.sanitize(obj);
+    }
+    if (Array.isArray(obj)) {
+      return obj.map(sanitize);
+    }
+    if (typeof obj === "object" && obj !== null) {
+      Object.keys(obj).forEach((key) => {
+        obj[key] = sanitize(obj[key]); // Obyekt ichidagi qiymatni o'zgartiramiz, obyektning o'zini emas!
+      });
+    }
+    return obj;
+  };
+
+  if (req.body) sanitize(req.body);
+  if (req.query) sanitize(req.query);
+  if (req.params) sanitize(req.params);
+
+  next();
+};
 
 // ⚙️ KONFIGURATSIYA
 dotenv.config();
@@ -87,8 +115,7 @@ app.use(cookieParser());
 // 🛡️ NoSQL Injection: Query-lardagi $ va . belgilarini yo'qotadi
 app.use(mongoSanitize());
 
-// 🛡️ XSS: HTML kodlarni (script) zararsizlantiradi
-app.use(xss());
+app.use(xssCleaner);
 
 // 🛡️ HPP: Parametr ifloslanishini oldini oladi
 app.use(
