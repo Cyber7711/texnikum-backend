@@ -35,11 +35,13 @@ const adminSchema = new mongoose.Schema(
       default: Date.now,
       select: false,
     },
+    loginAttempts: { type: Number, default: 0 },
+    lockUntil: { type: Date },
   },
   {
     toJSON: { virtuals: true },
     toObject: { virtuals: true },
-  }
+  },
 );
 
 // Parolni hash qilish
@@ -53,7 +55,7 @@ adminSchema.pre("save", async function (next) {
 // Parolni tekshirish
 adminSchema.methods.correctPassword = async function (
   candidatePassword,
-  userPassword
+  userPassword,
 ) {
   return await bcrypt.compare(candidatePassword, userPassword);
 };
@@ -63,7 +65,7 @@ adminSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
   if (this.passwordChangedAt) {
     const changedTimestamp = parseInt(
       this.passwordChangedAt.getTime() / 1000,
-      10
+      10,
     );
     return JWTTimestamp < changedTimestamp;
   }

@@ -4,7 +4,7 @@ const sendResponse = (res, { status = 200, message = "OK", data = null }) => {
     status: isSuccess,
     message,
     ...(data !== null && { data }),
-    timestams: new Date().toISOString(),
+    timestamp: new Date().toISOString(),
   });
 };
 

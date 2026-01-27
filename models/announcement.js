@@ -8,7 +8,7 @@ const announcementSchema = new mongoose.Schema(
       trim: true,
       minlength: [3, "Sarlavha kamida 3 belgidan iborat bo‘lishi kerak"],
       maxlength: [100, "Sarlavha 100 belgidan oshmasligi kerak"],
-      unique: true, // Duplicate sarlavhalar bo‘lmasin
+      unique: true,
       match: [
         /^[a-zA-Z0-9\s.,!?()'-]+$/,
         "Sarlavhada faqat harf, raqam va oddiy belgilar bo‘lishi mumkin",
@@ -39,10 +39,10 @@ const announcementSchema = new mongoose.Schema(
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Admin", // Admin modeliga bog‘lash
+      ref: "Admin",
       required: true,
       immutable: true,
-      select: false, // Defaultda ko‘rinmasin
+      select: false,
     },
     isActive: {
       type: Boolean,
