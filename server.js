@@ -5,33 +5,45 @@ require("colors");
 const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
-const cookieParser = require("cookie-parser"); // 🍪 Cookie o'qish uchun
-const mongoSanitize = require("express-mongo-sanitize"); // 🛡️ NoSQL Injection
-const xss = require("xss-clean"); // 🛡️ XSS himoya
-const hpp = require("hpp"); // 🛡️ Parametr ifloslanishi
-const compression = require("compression"); // 🚀 Tezlikni oshirish
-
+const cookieParser = require("cookie-parser");
+const mongoSanitize = require("express-mongo-sanitize");
+const xss = require("xss-clean");
+const hpp = require("hpp");
+const compression = require("compression");
+const morgan = require("morgan"); // 🛡️ Loglar uchun (kim hujum qilayotganini ko'rish uchun)
+const path = require("path");
 const globalErrorHandler = require("./controllers/errorController");
 const AppError = require("./utils/appError");
 const allRoutes = require("./routes/index");
 const { swaggerUi, swaggerSpec } = require("./swagger");
 
+// ⚙️ KONFIGURATSIYA
 dotenv.config();
 connectDB();
 
 const app = express();
 
 // ============================================================
-// 1. SECURITY & OPTIMIZATION (HIMOYA QATLAMI)
+// 1. GLOBAL MIDDLEWARES & OPTIMIZATION
 // ============================================================
 
-// Proxy ishonchi (Vercel/Heroku uchun shart)
+// 🛡️ Loglash: Faqat developmentda ishlaydi
+if (process.env.NODE_ENV === "development") {
+  app.use(morgan("dev"));
+}
+
+// 🛡️ Proxy ishonchi: Render/Vercel uchun o'ta muhim
 app.set("trust proxy", 1);
 
-// HTTP Headerlarni himoyalash
-app.use(helmet({ crossOriginResourcePolicy: false }));
+// 🛡️ Xavfsizlik sarlavhalari (Scriptlarni bloklash va h.k.)
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: false, // Swagger bilan muammo bo'lmasligi uchun
+  }),
+);
 
-// CORS (Kimlar kira oladi?)
+// 🛡️ CORS: Dinamik ruxsatlar
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
@@ -40,79 +52,118 @@ const allowedOrigins = [
 
 app.use(
   cors({
-    origin: allowedOrigins,
-    credentials: true, // Cookie o'tishi uchun ruxsat
+    origin: (origin, callback) => {
+      // Kelayotgan origin ro'yxatda bormi yoki yo'qligini tekshirish
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("CORS Policy: Bu domenga ruxsat berilmagan!"));
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
   }),
 );
 
-// Response-larni siqish (Sayt tezroq yuklanadi)
+// 🚀 Tezlikni oshirish
 app.use(compression());
 
 // ============================================================
-// 2. PARSERS (MA'LUMOTNI O'QISH)
+// 2. PARSERS & LIMITS (BODY & COOKIE)
 // ============================================================
 
-// Body-dagi ma'lumotni o'qish (max 10kb - DDoS himoya)
+// 🛡️ Body limits: 10kb dan katta ma'lumot qabul qilinmaydi (DDoS-ni oldini oladi)
 app.use(express.json({ limit: "10kb" }));
 app.use(express.urlencoded({ extended: true, limit: "10kb" }));
 
-// 🍪 Browserdan kelgan Cookie-ni o'qish (Login uchun eng muhimi!)
+// 🍪 Cookie o'qish (Sizning JWT login tizimingiz yuragi)
 app.use(cookieParser());
 
 // ============================================================
-// 3. DATA SANITIZATION (TOZALASH)
+// 3. DATA SANITIZATION (Hacker-Proofing)
 // ============================================================
 
-// NoSQL Injection himoyasi ($, . belgilarni tozalaydi)
-// Siz yozgan qo'lbola funksiyadan ko'ra tezroq va ishonchliroq
+// 🛡️ NoSQL Injection: Query-lardagi $ va . belgilarini yo'qotadi
 app.use(mongoSanitize());
 
-// XSS himoyasi (HTML kodlarni tozalaydi <script>alert(1)</script>)
+// 🛡️ XSS: HTML kodlarni (script) zararsizlantiradi
 app.use(xss());
 
-// HPP (HTTP Parameter Pollution)
-// Masalan: ?sort=price&sort=name (ikki marta yozishni to'xtatadi)
-app.use(hpp());
+// 🛡️ HPP: Parametr ifloslanishini oldini oladi
+app.use(
+  hpp({
+    whitelist: [
+      "duration",
+      "ratingsQuantity",
+      "ratingsAverage",
+      "maxGroupSize",
+      "difficulty",
+      "price",
+    ], // Bu parametrlarni bir necha marta ishlatishga ruxsat beradi (masalan ?price=10&price=20)
+  }),
+);
 
 // ============================================================
-// 4. RATE LIMITING (DOS HIMOYA)
+// 4. RATE LIMITING (Flood Control)
 // ============================================================
 
-const limiter = rateLimit({
+const globalLimiter = rateLimit({
   max: 200, // 15 daqiqada 200 ta so'rov
   windowMs: 15 * 60 * 1000,
-  message: "Juda ko'p so'rov yubordingiz. Iltimos 15 daqiqa kuting.",
+  message: {
+    status: "fail",
+    message: "Juda ko'p so'rov yubordingiz. 15 daqiqa kuting!",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
-app.use("/api", limiter);
+app.use("/api", globalLimiter);
 
 // ============================================================
-// 5. ROUTES (YO'NALISHLAR)
+// 5. ROUTES
 // ============================================================
+
+// Statik fayllar (yuklangan rasmlar uchun bo'sh bo'lsa)
+app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
 
 app.use("/swagger", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/api", allRoutes);
 
 app.get("/", (req, res) => {
-  res.status(200).send("Texnikum API Running Security Level: MAX 🛡️");
+  res.status(200).json({
+    status: "success",
+    message: "Texnikum API 🛡️ Security Level: MAX (Online)",
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // ============================================================
 // 6. ERROR HANDLING
 // ============================================================
 
+// Mavjud bo'lmagan yo'nalishlar
 app.use((req, res, next) => {
-  next(new AppError(`Manzil topilmadi: ${req.originalUrl}`, 404));
+  next(new AppError(`Topilmadi: ${req.originalUrl}`, 404));
 });
 
+// Global Xatolik boshqaruvchisi
 app.use(globalErrorHandler);
 
 // ============================================================
-// 7. START
+// 7. BOOTSTRAP
 // ============================================================
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(
-    `🚀 Server ${PORT}-portda xavfsiz rejimda ishga tushdi`.green.bold,
-  );
+const server = app.listen(PORT, () => {
+  console.log(`🚀 API System Secured & Running on Port ${PORT}`.cyan.bold);
+});
+
+// 🛡️ UNHANDLED REJECTIONS (Serverni kutilmaganda o'chishidan asraydi)
+process.on("unhandledRejection", (err) => {
+  console.log("UNHANDLED REJECTION! 💥 Server to'xtatilmoqda...".red.bold);
+  console.log(err.name, err.message);
+  server.close(() => {
+    process.exit(1);
+  });
 });
