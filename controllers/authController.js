@@ -1,4 +1,3 @@
-// controllers/authController.js
 "use strict";
 
 const { promisify } = require("util");
@@ -9,29 +8,24 @@ const Admin = require("../models/admin");
 const AppError = require("../utils/appError");
 
 // ==============================
-// Config helpers
+// Helpers
 // ==============================
-const isProd = () => process.env.NODE_ENV === "production";
-
 const getEnvNumber = (key, fallback) => {
   const v = Number(process.env[key]);
   return Number.isFinite(v) ? v : fallback;
 };
 
-const getCookieOptions = (req) => {
-  // Cookie necha kun saqlanishi (refresh token muddati bilan mos bo‘lsin)
-  const days = getEnvNumber("JWT_COOKIE_EXPIRES_IN_DAYS", 30);
+const uuid = () => {
+  if (crypto.randomUUID) return crypto.randomUUID();
+  return crypto.randomBytes(16).toString("hex");
+};
 
-  // Render + Vercel => cross-site cookie kerak bo‘ladi
+const getCookieOptions = (req) => {
+  const days = getEnvNumber("JWT_COOKIE_EXPIRES_IN_DAYS", 30);
   const crossSite = process.env.COOKIE_CROSS_SITE === "true";
 
-  // SameSite=None bo‘lsa Secure majburiy
   const sameSite = crossSite ? "none" : "lax";
-
-  // reverse proxy (Render) ortida HTTPS aniqlash
   const isHttps = req.secure || req.headers["x-forwarded-proto"] === "https";
-
-  // cross-site bo‘lsa secure true bo‘lishi shart
   const secure = crossSite ? true : isHttps;
 
   return {
@@ -41,28 +35,6 @@ const getCookieOptions = (req) => {
     path: "/",
     expires: new Date(Date.now() + days * 24 * 60 * 60 * 1000),
   };
-};
-
-// ==============================
-// Token helpers
-// ==============================
-const uuid = () => {
-  if (crypto.randomUUID) return crypto.randomUUID();
-  return crypto.randomBytes(16).toString("hex");
-};
-
-const signAccessToken = (admin) => {
-  return jwt.sign({ id: admin._id }, process.env.JWT_ACCESS_SECRET, {
-    expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || "15m",
-  });
-};
-
-const signRefreshToken = (admin) => {
-  return jwt.sign(
-    { id: admin._id, jti: uuid() },
-    process.env.JWT_REFRESH_SECRET,
-    { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "30d" },
-  );
 };
 
 const setAuthCookies = (req, res, { accessToken, refreshToken }) => {
@@ -77,6 +49,22 @@ const clearAuthCookies = (req, res) => {
   res.cookie("refresh_token", "", opts);
 };
 
+const signAccessToken = (admin) => {
+  const secret = process.env.JWT_ACCESS_SECRET;
+  if (!secret) throw new Error("JWT_ACCESS_SECRET is missing");
+  return jwt.sign({ id: admin._id }, secret, {
+    expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || "15m",
+  });
+};
+
+const signRefreshToken = (admin) => {
+  const secret = process.env.JWT_REFRESH_SECRET;
+  if (!secret) throw new Error("JWT_REFRESH_SECRET is missing");
+  return jwt.sign({ id: admin._id, jti: uuid() }, secret, {
+    expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "30d",
+  });
+};
+
 const sendUser = (res, admin) => {
   const safe = admin.toObject ? admin.toObject() : { ...admin };
   delete safe.password;
@@ -84,45 +72,35 @@ const sendUser = (res, admin) => {
   delete safe.loginAttempts;
   delete safe.lockUntil;
 
-  res.status(200).json({
+  return res.status(200).json({
     status: "success",
     data: { user: safe },
   });
 };
 
 // ==============================
-// reCAPTCHA v3 verification
+// reCAPTCHA v3
 // ==============================
 const verifyRecaptchaV3 = async ({ token, expectedAction }) => {
-  if (!token) {
-    return { ok: false, reason: "missing_token" };
-  }
+  if (!token) return { ok: false, reason: "missing_token" };
 
   const secret = process.env.RECAPTCHA_SECRET_KEY;
-  if (!secret) {
-    // prod’da bu katta muammo; dev’da esa ixtiyoriy bypass qilinishi mumkin
-    return { ok: false, reason: "missing_secret" };
-  }
+  if (!secret) return { ok: false, reason: "missing_secret" };
 
   const url =
     "https://www.google.com/recaptcha/api/siteverify" +
     `?secret=${encodeURIComponent(secret)}` +
     `&response=${encodeURIComponent(token)}`;
 
-  // axios.post(verifyUrl) bilan ham bo‘ladi, lekin urlencoded query ham OK
   const { data } = await axios.post(url);
 
-  // data: { success, score, action, hostname, "error-codes": [] }
-  if (!data?.success) {
+  if (!data?.success)
     return { ok: false, reason: "verify_failed", details: data };
-  }
 
-  // Action check (recommended)
   if (expectedAction && data.action && data.action !== expectedAction) {
     return { ok: false, reason: "action_mismatch", details: data };
   }
 
-  // Hostname check (optional, prod’da yaxshi)
   const allowedHosts = (process.env.RECAPTCHA_ALLOWED_HOSTS || "")
     .split(",")
     .map((s) => s.trim())
@@ -145,18 +123,15 @@ const verifyRecaptchaV3 = async ({ token, expectedAction }) => {
 };
 
 // ==============================
-// Core: Issue + store refresh hash
+// Core token issuing
 // ==============================
 const issueTokensForAdmin = async (req, res, admin) => {
   const accessToken = signAccessToken(admin);
   const refreshToken = signRefreshToken(admin);
 
   const refreshHash = admin.hashToken(refreshToken);
-
-  // Rotation list
   admin.refreshTokens.push(refreshHash);
 
-  // Optional session cap
   const maxSessions = getEnvNumber("MAX_SESSIONS", 5);
   if (admin.refreshTokens.length > maxSessions) {
     admin.refreshTokens = admin.refreshTokens.slice(-maxSessions);
@@ -180,7 +155,7 @@ exports.login = async (req, res, next) => {
       return next(new AppError("Login va parol kiritilishi shart!", 400));
     }
 
-    // reCAPTCHA optional bypass for dev
+    // reCAPTCHA (prod’da ON)
     const captchaDisabled = process.env.CAPTCHA_DISABLED === "true";
     if (!captchaDisabled) {
       const result = await verifyRecaptchaV3({
@@ -189,8 +164,19 @@ exports.login = async (req, res, next) => {
       });
 
       if (!result.ok) {
-        // Debug uchun (prod’da loglarni ehtiyot qil)
-        if (!isProd()) console.log("recaptcha:", result);
+        // Prod’da ham minimal debug (secret chiqmaydi)
+        console.log("recaptcha_fail:", {
+          reason: result.reason,
+          details: result.details
+            ? {
+                success: result.details.success,
+                score: result.details.score,
+                action: result.details.action,
+                hostname: result.details.hostname,
+                errorCodes: result.details["error-codes"],
+              }
+            : null,
+        });
 
         return next(
           new AppError("Xavfsizlik tizimi sizni bot deb topdi 🤖", 403),
@@ -202,12 +188,11 @@ exports.login = async (req, res, next) => {
       "+password +loginAttempts +lockUntil +refreshTokens",
     );
 
-    // Enumeration yo‘q: bitta umumiy error
     if (!admin) {
       return next(new AppError("Login yoki parol noto'g'ri", 401));
     }
 
-    // Lockout check
+    // Lockout
     if (admin.lockUntil && admin.lockUntil > Date.now()) {
       const waitMinutes = Math.ceil((admin.lockUntil - Date.now()) / 1000 / 60);
       return next(
@@ -234,7 +219,6 @@ exports.login = async (req, res, next) => {
         const lockMs = getEnvNumber("LOCK_MS", 60 * 60 * 1000);
         admin.lockUntil = Date.now() + lockMs;
         await admin.save({ validateBeforeSave: false });
-
         return next(
           new AppError(
             "Juda ko'p xato urinish! Hisob vaqtincha bloklandi.",
@@ -247,7 +231,7 @@ exports.login = async (req, res, next) => {
       return next(new AppError("Login yoki parol noto'g'ri", 401));
     }
 
-    // Success: reset counters
+    // Success -> reset
     admin.loginAttempts = 0;
     admin.lockUntil = undefined;
     await admin.save({ validateBeforeSave: false });
@@ -275,7 +259,7 @@ exports.refreshToken = async (req, res, next) => {
         refreshToken,
         process.env.JWT_REFRESH_SECRET,
       );
-    } catch (e) {
+    } catch {
       clearAuthCookies(req, res);
       return next(
         new AppError("Refresh token noto‘g‘ri yoki muddati tugagan.", 401),
@@ -288,7 +272,6 @@ exports.refreshToken = async (req, res, next) => {
       return next(new AppError("Sessiya tugagan. Qayta login qiling.", 401));
     }
 
-    // Password changed -> kill all sessions
     if (admin.changedPasswordAfter(decoded.iat)) {
       admin.refreshTokens = [];
       await admin.save({ validateBeforeSave: false });
@@ -297,10 +280,10 @@ exports.refreshToken = async (req, res, next) => {
     }
 
     const incomingHash = admin.hashToken(refreshToken);
-
-    // Reuse detection: token DB’da yo‘q
     const exists = admin.refreshTokens.includes(incomingHash);
+
     if (!exists) {
+      // token reuse / stolen token -> kill sessions
       admin.refreshTokens = [];
       await admin.save({ validateBeforeSave: false });
       clearAuthCookies(req, res);
@@ -312,7 +295,7 @@ exports.refreshToken = async (req, res, next) => {
       );
     }
 
-    // Rotation: remove old hash
+    // Rotate
     admin.refreshTokens = admin.refreshTokens.filter((h) => h !== incomingHash);
 
     const newAccessToken = signAccessToken(admin);
@@ -362,13 +345,12 @@ exports.logout = async (req, res, next) => {
   }
 };
 
-// Middleware: protect admin routes (cookie-only)
+// Protect middleware
 exports.protect = async (req, res, next) => {
   try {
     const accessToken = req.cookies?.access_token;
-    if (!accessToken) {
+    if (!accessToken)
       return next(new AppError("Iltimos, avval tizimga kiring.", 401));
-    }
 
     let decoded;
     try {
@@ -376,14 +358,13 @@ exports.protect = async (req, res, next) => {
         accessToken,
         process.env.JWT_ACCESS_SECRET,
       );
-    } catch (e) {
+    } catch {
       return next(new AppError("Sessiya tugagan. Qayta urining.", 401));
     }
 
     const admin = await Admin.findById(decoded.id);
-    if (!admin) {
+    if (!admin)
       return next(new AppError("Bu token egasi endi mavjud emas.", 401));
-    }
 
     if (admin.changedPasswordAfter(decoded.iat)) {
       return next(new AppError("Parol o'zgargan! Qaytadan kiring.", 401));
@@ -391,7 +372,7 @@ exports.protect = async (req, res, next) => {
 
     req.user = admin;
     return next();
-  } catch (err) {
+  } catch {
     return next(new AppError("Noto‘g‘ri token yoki sessiya tugagan.", 401));
   }
 };
