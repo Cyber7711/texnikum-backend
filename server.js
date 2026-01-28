@@ -72,27 +72,36 @@ app.use(
 );
 
 // 🛡️ CORS: Dinamik ruxsatlar
-const allowedOrigins = [
+// 🛡️ CORS: Dinamik ruxsatlar
+const allowedOrigins = new Set([
   "http://localhost:5173",
   "http://localhost:3000",
   "https://texnikum3son.vercel.app",
-];
+  "https://www.texnikum3son.vercel.app",
+]);
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Kelayotgan origin ro'yxatda bormi yoki yo'qligini tekshirish
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("CORS Policy: Bu domenga ruxsat berilmagan!"));
-      }
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-  }),
-);
+const vercelPreviewRegex =
+  /^https:\/\/(www\.)?texnikum3son(?:-[a-z0-9-]+)?\.vercel\.app$/i;
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.has(origin) || vercelPreviewRegex.test(origin)) {
+      return callback(null, true);
+    }
+
+    console.log("CORS blocked origin:", origin);
+    return callback(new Error("CORS Policy: Bu domenga ruxsat berilmagan!"));
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 
 // 🚀 Tezlikni oshirish
 app.use(compression());
