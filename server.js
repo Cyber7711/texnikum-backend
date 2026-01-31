@@ -117,6 +117,9 @@ app.use(express.urlencoded({ extended: true, limit: "10kb" }));
 // 🍪 Cookie o'qish (Sizning JWT login tizimingiz yuragi)
 app.use(cookieParser());
 
+const { csrfProtect } = require("./middleware/csrf");
+app.use(csrfProtect);
+
 // ============================================================
 // 3. DATA SANITIZATION (Hacker-Proofing)
 // ============================================================

@@ -16,7 +16,7 @@ exports.protect = catchAsync(async (req, res, next) => {
 
   if (!token) {
     return next(
-      new AppError("Siz tizimga kirmagansiz! Iltimos login qiling.", 401)
+      new AppError("Siz tizimga kirmagansiz! Iltimos login qiling.", 401),
     );
   }
 
