@@ -1,38 +1,39 @@
 const mongoose = require("mongoose");
 
-const leaderSchema = new mongoose.Schema(
+const managementSchema = new mongoose.Schema(
   {
-    id: { type: String, required: true }, // "dir_1", "dep_1", "h1" ...
-    name: { type: String, required: true, trim: true },
-    position: { type: String, required: true, trim: true },
+    name: { type: String, required: true, trim: true, maxlength: 120 },
+    position: { type: String, required: true, trim: true, maxlength: 160 },
+
     role: {
       type: String,
       enum: ["director", "deputy", "head"],
       required: true,
+      index: true,
     },
 
-    phone: { type: String, default: null },
-    email: { type: String, default: null },
-    reception: { type: String, default: null },
-    bio: { type: String, default: null },
-    education: { type: String, default: null },
-    experience: { type: String, default: null },
+    phone: { type: String, default: null, trim: true, maxlength: 50 },
+    email: { type: String, default: null, trim: true, maxlength: 120 },
+    reception: { type: String, default: null, trim: true, maxlength: 120 },
+    bio: { type: String, default: null, trim: true, maxlength: 1200 },
+    education: { type: String, default: null, trim: true, maxlength: 160 },
+    experience: { type: String, default: null, trim: true, maxlength: 80 },
 
-    // HEADS uchun icon key (Users, Building2, BadgeCheck, FileText)
-    iconKey: { type: String, default: null },
+    iconKey: { type: String, default: null, trim: true, maxlength: 50 },
+
+    order: { type: Number, default: 0, index: true },
 
     // Uploadcare UUID
     image: { type: String, default: null },
-    imagePublicId: { type: String, select: false }, // hozircha shartmas, news’da bor — standart
-  },
-  { _id: false },
-);
+    imagePublicId: { type: String, select: false },
 
-const managementSchema = new mongoose.Schema(
-  {
-    director: { type: leaderSchema, required: true },
-    deputies: { type: [leaderSchema], default: [] },
-    heads: { type: [leaderSchema], default: [] },
+    author: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Admin",
+      required: true,
+      immutable: true,
+      select: false,
+    },
 
     isActive: { type: Boolean, default: true, select: false },
   },
@@ -45,30 +46,21 @@ const managementSchema = new mongoose.Schema(
         delete ret.isActive;
         delete ret.imagePublicId;
 
-        const withImageUrls = (leader) => {
-          if (!leader) return leader;
-
-          // leader.image => UUID bo‘lsa, URLlarni qo‘shamiz
-          if (leader.image && leader.image.length > 5) {
-            const uuid = leader.image;
-            leader.imageUrl = `https://ucarecdn.com/${uuid}/`;
-            leader.imagePreview = `https://ucarecdn.com/${uuid}/-/preview/400x400/-/quality/smart/`;
-          } else {
-            leader.imageUrl = null;
-            leader.imagePreview = null;
-          }
-          return leader;
-        };
-
-        ret.director = withImageUrls(ret.director);
-        ret.deputies = (ret.deputies || []).map(withImageUrls);
-        ret.heads = (ret.heads || []).map(withImageUrls);
-
+        if (ret.image && ret.image.length > 5) {
+          const uuid = ret.image;
+          ret.imageUrl = `https://ucarecdn.com/${uuid}/`;
+          ret.imagePreview = `https://ucarecdn.com/${uuid}/-/preview/600x600/-/quality/smart/`;
+        } else {
+          ret.imageUrl = null;
+          ret.imagePreview = null;
+        }
         return ret;
       },
     },
   },
 );
 
-const Management = mongoose.model("Management", managementSchema);
-module.exports = Management;
+managementSchema.index({ role: 1, order: 1 });
+managementSchema.index({ createdAt: -1 });
+
+module.exports = mongoose.model("Management", managementSchema);

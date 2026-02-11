@@ -1,75 +1,52 @@
 const Management = require("../models/management");
 const AppError = require("../utils/appError");
+const validateId = require("../middleware/idValidator");
 
 class ManagementService {
-  static async getOne() {
-    // bizda bitta doc bo‘ladi
-    const doc = await Management.findOne();
-    if (!doc) throw new AppError("Management doc topilmadi", 404);
+  static async getGrouped() {
+    const [director, deputies, heads] = await Promise.all([
+      Management.findOne({ role: "director" }).sort({ order: 1 }),
+      Management.find({ role: "deputy" }).sort({ order: 1 }),
+      Management.find({ role: "head" }).sort({ order: 1 }),
+    ]);
+
+    return {
+      director: director || null,
+      deputies,
+      heads,
+    };
+  }
+
+  static async getAllFlat() {
+    return Management.find().sort({ role: 1, order: 1, createdAt: -1 });
+  }
+
+  static async getById(id) {
+    validateId(id);
+    const doc = await Management.findById(id);
+    if (!doc) throw new AppError("Rahbar topilmadi", 404);
     return doc;
   }
 
-  static async ensureSeed() {
-    const exists = await Management.findOne();
-    if (exists) return exists;
-
-    // Minimal seed (keyin admin paneldan o‘zgartirasan)
-    const seeded = await Management.create({
-      director: {
-        id: "dir_1",
-        name: "Director Name",
-        position: "Texnikum Direktori",
-        role: "director",
-      },
-      deputies: [],
-      heads: [],
-    });
-    return seeded;
+  static async create(data) {
+    return Management.create(data);
   }
 
-  static findLeader(doc, leaderId) {
-    if (doc.director?.id === leaderId) {
-      return { type: "director", leader: doc.director };
-    }
-
-    const dep = doc.deputies.find((x) => x.id === leaderId);
-    if (dep) return { type: "deputy", leader: dep };
-
-    const head = doc.heads.find((x) => x.id === leaderId);
-    if (head) return { type: "head", leader: head };
-
-    return null;
+  static async update(id, patch) {
+    validateId(id);
+    const updated = await Management.findByIdAndUpdate(id, patch, {
+      new: true,
+      runValidators: true,
+    });
+    if (!updated) throw new AppError("Yangilash uchun rahbar topilmadi", 404);
+    return updated;
   }
 
-  static async updateLeader(leaderId, updateData) {
-    const doc = await ManagementService.getOne();
-
-    const found = ManagementService.findLeader(doc, leaderId);
-    if (!found) throw new AppError("Bunday leaderId topilmadi", 404);
-
-    // Xavfsizlik: ruxsat etilgan fieldlar
-    const allowed = [
-      "name",
-      "position",
-      "phone",
-      "email",
-      "reception",
-      "bio",
-      "education",
-      "experience",
-      "iconKey",
-      "image",
-    ];
-
-    Object.keys(updateData).forEach((k) => {
-      if (!allowed.includes(k)) delete updateData[k];
-    });
-
-    // merge
-    Object.assign(found.leader, updateData);
-
-    await doc.save();
-    return doc;
+  static async remove(id) {
+    validateId(id);
+    const deleted = await Management.findByIdAndDelete(id);
+    if (!deleted) throw new AppError("O‘chirish uchun rahbar topilmadi", 404);
+    return deleted;
   }
 }
 

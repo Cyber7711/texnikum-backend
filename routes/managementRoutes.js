@@ -3,17 +3,27 @@ const router = express.Router();
 
 const managementController = require("../controllers/managementController");
 const { protect } = require("../middleware/protect");
-const upload = require("../middleware/uploads"); // sening multer middleware’ing
+const { uploadSingle } = require("../middleware/uploads");
+// Eslatma: news’da qanday bo‘lsa xuddi shuni ishlat.
+// Agar sende boshqa nom bo‘lsa — o‘sha.
 
-// Public
 router.get("/", managementController.getManagement);
 
-// Admin edit (multipart/form-data)
-router.patch(
-  "/leader/:leaderId",
+// admin uchun flat list (qulay)
+router.get("/all", protect, managementController.getAllFlat);
+
+router.post(
+  "/",
   protect,
-  upload.single("image"),
-  managementController.updateLeader,
+  uploadSingle("image"),
+  managementController.createManagement,
 );
+router.patch(
+  "/:id",
+  protect,
+  uploadSingle("image"),
+  managementController.updateManagement,
+);
+router.delete("/:id", protect, managementController.deleteManagement);
 
 module.exports = router;
