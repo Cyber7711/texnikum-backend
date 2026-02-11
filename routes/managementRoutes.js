@@ -7,7 +7,6 @@ const upload = require("../middleware/uploads");
 
 router.get("/", managementController.getManagement);
 
-// admin uchun flat list (qulay)
 router.get("/all", protect, managementController.getAllFlat);
 
 router.post(

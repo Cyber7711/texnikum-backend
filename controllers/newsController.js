@@ -16,7 +16,7 @@ exports.createNews = catchAsync(async (req, res, next) => {
   // Admin tekshiruvi (Protect middleware'dan keladi)
   if (!req.user || !req.user._id) {
     return next(
-      new AppError("Avtorizatsiyadan o'tilmagan! Iltimos, qayta kiring.", 401)
+      new AppError("Avtorizatsiyadan o'tilmagan! Iltimos, qayta kiring.", 401),
     );
   }
 
@@ -58,35 +58,27 @@ exports.getNewsById = catchAsync(async (req, res, next) => {
   });
 });
 
-// 4. Yangilikni tahrirlash
+// TO'G'RILANGAN News Controller Update qismi:
 exports.updateNews = catchAsync(async (req, res, next) => {
-  // 1. Avval yangilik borligini tekshiramiz
   const oldNews = await NewsService.getNewsById(req.params.id);
-
-  // 2. Yangilanishi kerak bo'lgan ma'lumotlar
   let updateData = { ...req.body };
 
-  // 3. Agar yangi rasm yuklangan bo'lsa
   if (req.file) {
-    // Yangi rasmni bulutga yuklaymiz
     const newImageUUID = await uploadToCloud(req.file);
     updateData.image = newImageUUID;
-
-    // Eski rasmni o'chiramiz (Orqa fonda, xatolik bo'lsa to'xtatmaymiz)
-    if (oldNews.image) {
-      deleteFromCloud(oldNews.image).catch((err) =>
-        console.error("Eski rasmni o'chirishda xato:", err)
-      );
-    }
   }
 
+  // 1. Avval bazani yangilaymiz
   const result = await NewsService.updateNews(req.params.id, updateData);
 
-  res.status(200).json({
-    status: "success",
-    message: "Yangilik muvaffaqiyatli yangilandi",
-    data: result,
-  });
+  // 2. Agar yangilanish o'xshasa va yangi rasm bo'lsa, eskisini o'chiramiz
+  if (req.file && oldNews.image) {
+    deleteFromCloud(oldNews.image).catch((err) =>
+      console.error("Cloud delete error:", err),
+    );
+  }
+
+  res.status(200).json({ status: "success", data: result });
 });
 
 // 5. O'chirish

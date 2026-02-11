@@ -40,6 +40,7 @@ const managementSchema = new mongoose.Schema(
   {
     timestamps: true,
     collection: "management",
+    // management.js (Model ichida toJSON transform qismi)
     toJSON: {
       transform: (doc, ret) => {
         delete ret.__v;
@@ -49,7 +50,8 @@ const managementSchema = new mongoose.Schema(
         if (ret.image && ret.image.length > 5) {
           const uuid = ret.image;
           ret.imageUrl = `https://ucarecdn.com/${uuid}/`;
-          ret.imagePreview = `https://ucarecdn.com/${uuid}/-/preview/600x600/-/quality/smart/`;
+          // Preview uchun: smart crop, auto format va quality smart filtrlari qo'shildi
+          ret.imagePreview = `https://ucarecdn.com/${uuid}/-/preview/600x600/-/quality/smart/-/format/auto/`;
         } else {
           ret.imageUrl = null;
           ret.imagePreview = null;

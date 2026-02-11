@@ -18,29 +18,18 @@ exports.getAllFlat = catchAsync(async (req, res) => {
 
 // POST /api/management (ADMIN)
 exports.createManagement = catchAsync(async (req, res, next) => {
-  if (!req.user?._id) {
-    return next(new AppError("Avtorizatsiya yo‘q. Qayta login qiling.", 401));
-  }
-
+  // protect middleware req.user ni allaqachon tekshirgan bo'lishi kerak
   let imageUUID = null;
   if (req.file) imageUUID = await uploadToCloud(req.file);
 
   const payload = {
-    name: req.body.name,
-    position: req.body.position,
-    role: req.body.role,
-    phone: req.body.phone || null,
-    email: req.body.email || null,
-    reception: req.body.reception || null,
-    bio: req.body.bio || null,
-    education: req.body.education || null,
-    experience: req.body.experience || null,
-    iconKey: req.body.iconKey || null,
+    ...req.body, // spread operator orqali barcha maydonlarni olish mumkin
     order: Number(req.body.order || 0),
     image: imageUUID,
     author: req.user._id,
   };
 
+  // payload ichidan ortiqcha narsalar ketmasligi uchun model validate qiladi
   const created = await ManagementService.create(payload);
   res.status(201).json({ status: "success", data: created });
 });
@@ -60,35 +49,49 @@ exports.updateManagement = catchAsync(async (req, res) => {
     education: req.body.education,
     experience: req.body.experience,
     iconKey: req.body.iconKey,
-    order: req.body.order !== undefined ? Number(req.body.order) : undefined,
+    // Bo'sh string kelishidan himoya
+    order:
+      req.body.order !== undefined && req.body.order !== ""
+        ? Number(req.body.order)
+        : undefined,
   };
 
-  // undefined maydonlarni olib tashla
+  // Undefined maydonlarni tozalash
   Object.keys(patch).forEach((k) => patch[k] === undefined && delete patch[k]);
 
+  // Rasmni boshqarish
   if (req.file) {
     const newUuid = await uploadToCloud(req.file);
     patch.image = newUuid;
-
-    if (old.image) {
-      deleteFromCloud(old.image).catch((e) =>
-        console.error("Old management image delete error:", e),
-      );
-    }
   }
 
+  // Avval bazani yangilaymiz
   const updated = await ManagementService.update(req.params.id, patch);
+
+  // Agar yangilanish muvaffaqiyatli bo'lsa va yangi rasm yuklangan bo'lsa, keyin eskisin o'chiramiz
+  if (req.file && old.image) {
+    deleteFromCloud(old.image).catch((e) =>
+      console.error("Old management image delete error:", e),
+    );
+  }
+
   res.status(200).json({ status: "success", data: updated });
 });
 
 // DELETE /api/management/:id (ADMIN)
 exports.deleteManagement = catchAsync(async (req, res) => {
+  // 1. Avval topamiz
   const doc = await ManagementService.getById(req.params.id);
 
-  if (doc.image) {
-    await deleteFromCloud(doc.image);
+  // 2. Bazadan o'chiramiz
+  await ManagementService.remove(req.params.id);
+
+  // 3. Agar bazadan muvaffaqiyatli o'chsa, keyin rasm o'chadi
+  if (doc && doc.image) {
+    await deleteFromCloud(doc.image).catch((err) =>
+      console.log("Cloud delete failed", err),
+    );
   }
 
-  await ManagementService.remove(req.params.id);
   res.status(204).json({ status: "success", data: null });
 });
