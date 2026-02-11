@@ -41,6 +41,7 @@ const managementSchema = new mongoose.Schema(
     timestamps: true,
     collection: "management",
     // management.js (Model ichida toJSON transform qismi)
+    // management.js modeli ichida
     toJSON: {
       transform: (doc, ret) => {
         delete ret.__v;
@@ -48,10 +49,13 @@ const managementSchema = new mongoose.Schema(
         delete ret.imagePublicId;
 
         if (ret.image && ret.image.length > 5) {
-          const uuid = ret.image;
-          ret.imageUrl = `https://ucarecdn.com/${uuid}/`;
-          // Preview uchun: smart crop, auto format va quality smart filtrlari qo'shildi
-          ret.imagePreview = `https://ucarecdn.com/${uuid}/-/preview/600x600/-/quality/smart/-/format/auto/`;
+          const uuid = ret.image.trim();
+          // 🛡️ TO'G'RILASH: Umumiy ucarecdn.com o'rniga o'zingizda ishlayotgan domenni yozing
+          const domain = "5nezpc68d1.ucarecd.net";
+
+          ret.imageUrl = `https://${domain}/${uuid}/`;
+          // 🛡️ TO'G'RILASH: URL oxiriga albatta "/" qo'shing
+          ret.imagePreview = `https://${domain}/${uuid}/-/preview/600x600/-/quality/smart/-/format/auto/`;
         } else {
           ret.imageUrl = null;
           ret.imagePreview = null;

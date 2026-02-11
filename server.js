@@ -117,7 +117,7 @@ app.use(compression());
 // ============================================================
 
 // 🛡️ Body limits: 10kb dan katta ma'lumot qabul qilinmaydi (DDoS-ni oldini oladi)
-app.use(express.json({ limit: "10kb" }));
+app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10kb" }));
 
 // 🍪 Cookie o'qish (Sizning JWT login tizimingiz yuragi)
