@@ -1,15 +1,22 @@
 const jwt = require("jsonwebtoken");
 const { promisify } = require("util");
-const Admin = require("../models/admin"); // Admin model manzili to'g'riligini tekshiring!
+const Admin = require("../models/admin");
 const AppError = require("../utils/appError");
-const catchAsync = require("../middleware/catchAsync"); // Agar catchAsync bo'lmasa, try-catch ishlating
+const catchAsync = require("../middleware/catchAsync");
 
 exports.protect = catchAsync(async (req, res, next) => {
-  // 1. Tokenni headerdan olish
   let token;
+
+  // ✅ 1) Cookie'dan o‘qiymiz (asosiy)
+  if (req.cookies && req.cookies.access_token) {
+    token = req.cookies.access_token;
+  }
+
+  // ✅ 2) Fallback: Bearer header
   if (
+    !token &&
     req.headers.authorization &&
-    req.headers.authorization.startsWith("Bearer")
+    req.headers.authorization.startsWith("Bearer ")
   ) {
     token = req.headers.authorization.split(" ")[1];
   }
@@ -20,18 +27,17 @@ exports.protect = catchAsync(async (req, res, next) => {
     );
   }
 
-  // 2. Tokenni tekshirish (Verification)
-  const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+  // ⚠️ Secret nomi sening authController’ingda JWT_ACCESS_SECRET edi
+  const decoded = await promisify(jwt.verify)(
+    token,
+    process.env.JWT_ACCESS_SECRET,
+  );
 
-  // 3. Token egasi (Admin) hali ham bormi?
   const currentUser = await Admin.findById(decoded.id);
   if (!currentUser) {
     return next(new AppError("Token egasi (Admin) bazadan o'chirilgan.", 401));
   }
 
-  // 4. MUHIM: Foydalanuvchini req ga biriktiramiz
   req.user = currentUser;
-
-  // Keyingi bosqichga o'tish
   next();
 });

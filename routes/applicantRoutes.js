@@ -7,7 +7,7 @@ const { protect } = require("../middleware/protect");
 router.post("/", applicantController.createApplicant);
 
 // GET & DELETE: /api/applicants (Yopiq - faqat admin)
-router.get("/", protect, applicantController.getAllApplicants);
-router.delete("/:id", protect, applicantController.deleteApplicant);
+router.get("/", applicantController.getAllApplicants);
+router.delete("/:id", applicantController.deleteApplicant);
 
 module.exports = router;
