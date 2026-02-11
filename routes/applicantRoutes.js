@@ -4,10 +4,10 @@ const applicantController = require("../controllers/applicantController");
 const { protect } = require("../middleware/protect");
 
 // POST: /api/applicants (Ochiq)
-router.post("/", applicantController.createApplicant);
+router.post("/", protect, applicantController.createApplicant);
 
 // GET & DELETE: /api/applicants (Yopiq - faqat admin)
-router.get("/", applicantController.getAllApplicants);
-router.delete("/:id", applicantController.deleteApplicant);
+router.get("/", protect, applicantController.getAllApplicants);
+router.delete("/:id", protect, applicantController.deleteApplicant);
 
 module.exports = router;
