@@ -1,5 +1,4 @@
 const DocService = require("../services/docService");
-const Document = require("../models/documents");
 const catchAsync = require("../middleware/catchAsync");
 const sendResponse = require("../middleware/sendResponse");
 const uploadToCloud = require("../utils/upload");
@@ -22,7 +21,7 @@ exports.getById = catchAsync(async (req, res) => {
   sendResponse(res, { status: 200, data: result });
 });
 
-// 3. Yaratish (Backend-side upload)
+// 3. Yaratish
 exports.create = catchAsync(async (req, res, next) => {
   if (!req.file) {
     return next(new AppError("Fayl yuklanishi shart!", 400));
@@ -35,6 +34,7 @@ exports.create = catchAsync(async (req, res, next) => {
     title: req.body.title,
     category: req.body.category,
     file: fileUUID,
+    // Fayl turi va hajmini avtomatik aniqlash
     fileType: req.file.originalname.split(".").pop().toLowerCase(),
     fileSize: req.file.size,
     createdBy: req.user._id,
@@ -49,51 +49,64 @@ exports.create = catchAsync(async (req, res, next) => {
   });
 });
 
-// 4. Yangilash (Fayl bilan yoki faylsiz)
+// 4. Yangilash (XAVFSIZ USUL) ✅
 exports.update = catchAsync(async (req, res, next) => {
-  const oldDoc = await Document.findById(req.params.id);
-  if (!oldDoc) return next(new AppError("Hujjat topilmadi", 404));
+  // 1. Avval eski hujjatni topamiz
+  const oldDoc = await DocService.getDocById(req.params.id);
 
   const updateData = { ...req.body };
+  let newFileUUID = null;
 
-  // Agar yangi fayl yuklangan bo'lsa
+  // 2. Agar yangi fayl yuklangan bo'lsa
   if (req.file) {
-    // 1. Yangi faylni bulutga yuklash
-    const newFileUUID = await uploadToCloud(req.file);
+    newFileUUID = await uploadToCloud(req.file);
     updateData.file = newFileUUID;
     updateData.fileType = req.file.originalname.split(".").pop().toLowerCase();
     updateData.fileSize = req.file.size;
-
-    // 2. Eski faylni bulutdan o'chirish
-    if (oldDoc.file) {
-      await deleteFromCloud(oldDoc.file);
-    }
   }
 
-  const result = await DocService.updateDoc(req.params.id, updateData);
+  // 3. Bazani yangilashga harakat qilamiz
+  try {
+    const result = await DocService.updateDoc(req.params.id, updateData);
 
-  sendResponse(res, {
-    status: 200,
-    message: "Hujjat ma'lumotlari yangilandi",
-    data: result,
-  });
+    // 4. Muvaffaqiyatli bo'lsa, ESKI faylni o'chiramiz
+    if (req.file && oldDoc.file) {
+      deleteFromCloud(oldDoc.file).catch((err) =>
+        console.error("Eski hujjatni o'chirishda xatolik:", err),
+      );
+    }
+
+    sendResponse(res, {
+      status: 200,
+      message: "Hujjat yangilandi",
+      data: result,
+    });
+  } catch (error) {
+    // ⚠️ Agar bazada xatolik bo'lsa va biz yangi fayl yuklagan bo'lsak,
+    // o'sha YANGI faylni o'chirib tashlash kerak (chunki u endi kerak emas)
+    if (newFileUUID) {
+      await deleteFromCloud(newFileUUID);
+    }
+    throw error; // Xatoni clientga qaytaramiz
+  }
 });
 
-// 5. O'chirish
+// 5. O'chirish (XAVFSIZ USUL) ✅
 exports.deleteDoc = catchAsync(async (req, res, next) => {
-  const doc = await Document.findById(req.params.id);
-  if (!doc) return next(new AppError("Hujjat topilmadi", 404));
+  const doc = await DocService.getDocById(req.params.id);
 
-  // Bulutdan o'chirish
-  if (doc.file) {
-    await deleteFromCloud(doc.file);
-  }
-
-  // Bazadan o'chirish (yoki soft-delete)
+  // 1. Avval bazadan o'chiramiz
   await DocService.deleteDoc(req.params.id);
+
+  // 2. Muvaffaqiyatli bo'lsa, keyin bulutdan o'chiramiz
+  if (doc.file) {
+    deleteFromCloud(doc.file).catch((err) =>
+      console.error("Bulutdan o'chirishda xatolik:", err),
+    );
+  }
 
   sendResponse(res, {
     status: 200,
-    message: "Hujjat bazadan va bulutdan o'chirildi",
+    message: "Hujjat o'chirildi",
   });
 });

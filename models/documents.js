@@ -16,8 +16,9 @@ const documentSchema = new mongoose.Schema(
         message: "Kategoriya noto'g'ri tanlandi",
       },
     },
+    // Uploadcare UUID
     file: {
-      type: String, // Uploadcare UUID
+      type: String,
       required: [true, "Fayl UUID kiritilishi shart"],
     },
     fileType: {
@@ -42,9 +43,35 @@ const documentSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-    toJSON: { virtuals: true },
+    toJSON: {
+      virtuals: true,
+      // ⚠️ YANGI QO'SHILGAN QISM
+      transform: (doc, ret) => {
+        delete ret.__v;
+        delete ret.isActive;
+        // delete ret.createdBy; // Agar admin ma'lumoti kerak bo'lmasa oching
+
+        // UUID dan to'liq yuklab olish havolasini yasash
+        if (ret.file) {
+          const uuid = ret.file.trim();
+          const domain = "5nezpc68d1.ucarecd.net"; // Sizning shaxsiy domeningiz
+
+          // Hujjatni ochish/yuklab olish uchun toza havola
+          // Oxirida slesh (/) bo'lishi shart!
+          ret.fileUrl = `https://${domain}/${uuid}/`;
+
+          // Ixtiyoriy: Faylni brauzerda ochmasdan, to'g'ridan-to'g'ri "Skachat" qilish uchun
+          ret.downloadUrl = `https://${domain}/${uuid}/-/inline/no/`;
+        } else {
+          ret.fileUrl = null;
+          ret.downloadUrl = null;
+        }
+
+        return ret;
+      },
+    },
     toObject: { virtuals: true },
-  }
+  },
 );
 
 module.exports = mongoose.model("Document", documentSchema);

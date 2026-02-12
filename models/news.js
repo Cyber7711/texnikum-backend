@@ -53,22 +53,24 @@ const newsSchema = new mongoose.Schema(
   {
     timestamps: true,
     collection: "news",
+    // models/News.js ichida
     toJSON: {
       transform: (doc, ret) => {
         delete ret.__v;
         delete ret.isActive;
         delete ret.imagePublicId;
 
-        // MUHIM: UUIDdan to'g'ri URL yasash
+        // UUIDdan to'g'ri URL yasash
         if (ret.image && ret.image.length > 5) {
-          const uuid = ret.image;
-          // Asil URL (Oxirida slesh bo'lishi shart!)
-          ret.imageUrl = `https://ucarecdn.com/${uuid}/`;
-          // Preview (Parametrlar va sleshlarning tartibi muhim)
-          ret.imagePreview = `https://ucarecdn.com/${uuid}/-/preview/400x400/-/quality/smart/`;
+          const uuid = ret.image.trim(); // Bo'shliqlardan tozalash
+          // Sizda ishlayotgan shaxsiy domen
+          const domain = "5nezpc68d1.ucarecd.net";
 
-          // Agar bazadagi UUIDni o'zini frontendga yubormoqchi bo'lmasangiz:
-          // delete ret.image;
+          // Asil URL (Oxirida slesh bo'lishi shart!)
+          ret.imageUrl = `https://${domain}/${uuid}/`;
+
+          // Preview (Oxirida slesh bo'lishi shart!)
+          ret.imagePreview = `https://${domain}/${uuid}/-/preview/400x400/-/quality/smart/-/format/auto/`;
         } else {
           ret.imageUrl = null;
           ret.imagePreview = null;
@@ -85,7 +87,7 @@ const newsSchema = new mongoose.Schema(
         return ret;
       },
     },
-  }
+  },
 );
 
 // === INDEXLAR – JUDA MUHIM! ===

@@ -71,24 +71,23 @@ const teacherSchema = new mongoose.Schema(
   {
     timestamps: true,
     collection: "teachers",
+    // models/Teacher.js ichida
     toJSON: {
       transform: (doc, ret) => {
         delete ret.__v;
         delete ret.isActive;
-        delete ret.createdBy; // Agar service'da ishlatsangiz
+        delete ret.createdBy;
 
-        // UUID dan to'liq CDN URL yasashda xatoga yo'l qo'ymaslik
+        // UUID dan to'liq CDN URL yasashda xato va domen muammolarini tuzatish
         if (ret.photo && ret.photo.length > 5) {
-          const uuid = ret.photo;
+          const uuid = ret.photo.trim(); // Bo'shliqlardan tozalash
+          const domain = "5nezpc68d1.ucarecd.net"; // Sizning ishlayotgan domeningiz
 
-          // Asil URL (Oxiridagi / belgisiga diqqat qiling!)
-          ret.photoUrl = `https://ucarecdn.com/${uuid}/`;
+          // Asil URL (Oxirida slesh bo'lishi shart!)
+          ret.photoUrl = `https://${domain}/${uuid}/`;
 
-          // Optimizatsiya qilingan avatar
-          ret.photoAvatar = `https://ucarecdn.com/${uuid}/-/scale_crop/200x200/smart/`;
-
-          // Foydalanuvchi chalkashmasligi uchun UUID maydonini o'chirib yuboramiz
-          // ret.photo = ret.photoUrl;
+          // Optimizatsiya qilingan avatar (Oxirida slesh va format qo'shildi)
+          ret.photoAvatar = `https://${domain}/${uuid}/-/scale_crop/200x200/smart/-/format/auto/`;
         } else {
           ret.photoUrl = null;
           ret.photoAvatar = null;
@@ -98,7 +97,7 @@ const teacherSchema = new mongoose.Schema(
       },
     },
     toObject: { virtuals: true },
-  }
+  },
 );
 
 // === INDEXLAR – Tez qidiruv uchun ===
