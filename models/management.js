@@ -4,61 +4,42 @@ const managementSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true, maxlength: 120 },
     position: { type: String, required: true, trim: true, maxlength: 160 },
-
     role: {
       type: String,
       enum: ["director", "deputy", "head"],
       required: true,
       index: true,
     },
-
-    phone: { type: String, default: null, trim: true, maxlength: 50 },
-    email: { type: String, default: null, trim: true, maxlength: 120 },
-    reception: { type: String, default: null, trim: true, maxlength: 120 },
-    bio: { type: String, default: null, trim: true, maxlength: 1200 },
-    education: { type: String, default: null, trim: true, maxlength: 160 },
-    experience: { type: String, default: null, trim: true, maxlength: 80 },
-
-    iconKey: { type: String, default: null, trim: true, maxlength: 50 },
-
+    phone: { type: String, default: null, trim: true },
+    email: { type: String, default: null, trim: true },
+    reception: { type: String, default: null, trim: true },
+    bio: { type: String, default: null, trim: true },
+    education: { type: String, default: null, trim: true },
+    experience: { type: String, default: null, trim: true },
+    iconKey: { type: String, default: null, trim: true },
     order: { type: Number, default: 0, index: true },
-
-    // Uploadcare UUID
     image: { type: String, default: null },
-    imagePublicId: { type: String, select: false },
-
     author: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Admin",
       required: true,
-      immutable: true,
       select: false,
     },
-
     isActive: { type: Boolean, default: true, select: false },
   },
   {
     timestamps: true,
     collection: "management",
-    // management.js (Model ichida toJSON transform qismi)
-    // management.js modeli ichida
     toJSON: {
       transform: (doc, ret) => {
         delete ret.__v;
         delete ret.isActive;
-        delete ret.imagePublicId;
 
-        if (ret.image && ret.image.length > 5) {
-          const uuid = ret.image.trim();
-          // 🛡️ TO'G'RILASH: Umumiy ucarecdn.com o'rniga o'zingizda ishlayotgan domenni yozing
-          const domain = "5nezpc68d1.ucarecd.net";
-
-          ret.imageUrl = `https://${domain}/${uuid}/`;
-          // 🛡️ TO'G'RILASH: URL oxiriga albatta "/" qo'shing
-          ret.imagePreview = `https://${domain}/${uuid}/-/preview/600x600/-/quality/smart/-/format/auto/`;
+        if (ret.image) {
+          const supabaseUrl = process.env.SUPABASE_URL;
+          ret.imageUrl = `${supabaseUrl}/storage/v1/object/public/uploads/${ret.image}`;
         } else {
           ret.imageUrl = null;
-          ret.imagePreview = null;
         }
         return ret;
       },
@@ -67,6 +48,4 @@ const managementSchema = new mongoose.Schema(
 );
 
 managementSchema.index({ role: 1, order: 1 });
-managementSchema.index({ createdAt: -1 });
-
 module.exports = mongoose.model("Management", managementSchema);

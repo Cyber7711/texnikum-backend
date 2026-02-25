@@ -1,4 +1,3 @@
-// models/News.js
 const mongoose = require("mongoose");
 
 const newsSchema = new mongoose.Schema(
@@ -14,7 +13,6 @@ const newsSchema = new mongoose.Schema(
       type: String,
       required: [true, "Yangilik matni kiritilishi shart"],
       trim: true,
-      minlength: [20, "Matn kamida 20 belgidan iborat bo‘lishi kerak"],
     },
     date: {
       type: Date,
@@ -25,16 +23,11 @@ const newsSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Admin",
       required: true,
-      immutable: true,
       select: false,
     },
     image: {
       type: String,
       default: null,
-    },
-    imagePublicId: {
-      type: String,
-      select: false,
     },
     isActive: {
       type: Boolean,
@@ -53,27 +46,17 @@ const newsSchema = new mongoose.Schema(
   {
     timestamps: true,
     collection: "news",
-    // models/News.js ichida
     toJSON: {
       transform: (doc, ret) => {
         delete ret.__v;
         delete ret.isActive;
-        delete ret.imagePublicId;
 
-        // UUIDdan to'g'ri URL yasash
-        if (ret.image && ret.image.length > 5) {
-          const uuid = ret.image.trim(); // Bo'shliqlardan tozalash
-          // Sizda ishlayotgan shaxsiy domen
-          const domain = "5nezpc68d1.ucarecd.net";
-
-          // Asil URL (Oxirida slesh bo'lishi shart!)
-          ret.imageUrl = `https://${domain}/${uuid}/`;
-
-          // Preview (Oxirida slesh bo'lishi shart!)
-          ret.imagePreview = `https://${domain}/${uuid}/-/preview/400x400/-/quality/smart/-/format/auto/`;
+        // Supabase URL yasash
+        if (ret.image) {
+          const supabaseUrl = process.env.SUPABASE_URL;
+          ret.imageUrl = `${supabaseUrl}/storage/v1/object/public/uploads/${ret.image}`;
         } else {
           ret.imageUrl = null;
-          ret.imagePreview = null;
         }
 
         ret.date = ret.date
@@ -83,23 +66,14 @@ const newsSchema = new mongoose.Schema(
               day: "numeric",
             })
           : null;
-
         return ret;
       },
     },
   },
 );
 
-// === INDEXLAR – JUDA MUHIM! ===
-newsSchema.index({ date: -1 }); // Yangi yangiliklar birinchi chiqsin
-newsSchema.index({ isActive: 1, isPublished: 1 });
-newsSchema.index({ author: 1 });
-newsSchema.index({ views: -1 }); // Eng ko‘p o‘qilganlar
-newsSchema.index({ title: "text", content: "text" }); // Qidiruv uchun ($text)
+newsSchema.index({ date: -1 });
+newsSchema.index({ views: -1 });
+newsSchema.index({ title: "text", content: "text" });
 
-// === UNIQUE – bir xil sarlavha bo‘lmasin (ixtiyoriy) ===
-// newsSchema.index({ title: 1 }, { unique: true });
-
-const News = mongoose.model("News", newsSchema);
-
-module.exports = News;
+module.exports = mongoose.model("News", newsSchema);

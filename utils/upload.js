@@ -1,22 +1,39 @@
-const { uploadFile } = require("@uploadcare/upload-client");
+// utils/upload.js
+const supabase = require("../config/supabase");
+
+const sanitizeFileName = (name) => {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9.]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+};
 
 const uploadToCloud = async (file) => {
-  if (!file || !file.buffer) return null;
-
   try {
-    // Muhim: Buffer-ni Uploadcare tushunadigan formatga tekshirish
-    const result = await uploadFile(file.buffer, {
-      publicKey: process.env.UPLOADCARE_PUBLIC_KEY,
-      store: "auto", // 'auto' yoki '1'
-      fileName: file.originalname,
-      contentType: file.mimetype,
-    });
+    const originalName = file.originalname || "unnamed_file";
+    const safeName = sanitizeFileName(originalName);
 
-    console.log("🚀 Yuklangan fayl UUID:", result.uuid);
-    return result.uuid;
+    const uniqueSuffix = `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+    const filePath = `${uniqueSuffix}-${safeName}`;
+
+    const { data, error } = await supabase.storage
+      .from("uploads")
+      .upload(filePath, file.buffer, {
+        contentType: file.mimetype,
+        cacheControl: "3600",
+        upsert: true,
+      });
+
+    if (error) {
+      console.error("Supabase API Xatosi:", error.message);
+      throw new Error("Supabase API xatosi");
+    }
+
+    return data.path;
   } catch (error) {
-    console.error("❌ Uploadcare xatosi:", error);
-    throw new Error("Rasmni bulutga yuklashda xatolik yuz berdi");
+    console.error("Upload Error:", error);
+    throw new Error("Faylni bulutga yuklashda kutilmagan xatolik yuz berdi");
   }
 };
 
