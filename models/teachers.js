@@ -79,8 +79,6 @@ const teacherSchema = new mongoose.Schema(
   },
 );
 
-teacherSchema.index({ email: 1 });
-teacherSchema.index({ phone: 1 });
 teacherSchema.index({ subject: 1 });
 teacherSchema.index({ fullname: "text" });
 
