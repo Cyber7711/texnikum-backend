@@ -2,10 +2,9 @@ const TeacherService = require("../services/teacherService");
 const Teacher = require("../models/teachers");
 const catchAsync = require("../middleware/catchAsync");
 const sendResponse = require("../middleware/sendResponse");
-const uploadToCloud = require("../utils/upload"); // utils/upload.js ekanligiga ishonch hosil qiling
+const uploadToCloud = require("../utils/upload");
 const deleteFromCloud = require("../utils/deleteFile");
 
-// 1. Hammasini olish
 const getAll = catchAsync(async (req, res) => {
   const result = await TeacherService.getAll();
   sendResponse(res, {
@@ -15,7 +14,6 @@ const getAll = catchAsync(async (req, res) => {
   });
 });
 
-// 2. ID bo'yicha olish
 const getById = catchAsync(async (req, res) => {
   const result = await TeacherService.getById(req.params.id);
   sendResponse(res, {
@@ -24,14 +22,16 @@ const getById = catchAsync(async (req, res) => {
   });
 });
 
-// 3. Yaratish
 const create = catchAsync(async (req, res) => {
-  // Rasm yuklash (Uploadcare)
-  const photoUUID = req.file ? await uploadToCloud(req.file) : null;
+  // Rasm yuklash (Supabase orqali)
+  let photoName = null;
+  if (req.file) {
+    photoName = await uploadToCloud(req.file);
+  }
 
   const teacherData = {
     ...req.body,
-    photo: photoUUID,
+    photo: photoName,
   };
 
   const result = await TeacherService.create(teacherData);
@@ -43,14 +43,13 @@ const create = catchAsync(async (req, res) => {
   });
 });
 
-// 4. Yangilash
 const update = catchAsync(async (req, res) => {
   const oldTeacher = await Teacher.findById(req.params.id);
 
   if (req.file) {
     // Yangi rasmni yuklaymiz
-    const newPhotoUUID = await uploadToCloud(req.file);
-    req.body.photo = newPhotoUUID;
+    const newPhotoName = await uploadToCloud(req.file);
+    req.body.photo = newPhotoName;
 
     // Eskisini o'chirib tashlaymiz
     if (oldTeacher?.photo) {
@@ -67,12 +66,11 @@ const update = catchAsync(async (req, res) => {
   });
 });
 
-// 5. O'chirish
 const deleteTeacher = catchAsync(async (req, res) => {
   const teacher = await Teacher.findById(req.params.id);
 
   if (teacher?.photo) {
-    // Avval bulutdan, keyin bazadan
+    // Avval bulutdan (Supabase), keyin bazadan o'chiramiz
     await deleteFromCloud(teacher.photo);
   }
 

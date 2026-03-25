@@ -12,21 +12,19 @@ const teacherSchema = new mongoose.Schema(
     subject: {
       type: String,
       required: [true, "Fan nomi kiritilishi shart"],
-      enum: {
-        values: [
-          "Matematika",
-          "Fizika",
-          "Informatika",
-          "Tarix",
-          "Ingliz tili",
-          "Ona tili va adabiyot",
-          "Kimyo",
-          "Biologiya",
-          "Jismoniy tarbiya",
-          "Boshqa",
-        ],
-        message: "{VALUE} fan nomi ro‘yxatda yo‘q",
-      },
+      // ⚠️ Tushirilgan enum tuzilishi to'g'rilandi
+      enum: [
+        "Matematika",
+        "Fizika",
+        "Informatika",
+        "Tarix",
+        "Ingliz tili",
+        "Ona tili va adabiyot",
+        "Kimyo",
+        "Biologiya",
+        "Jismoniy tarbiya",
+        "Boshqa",
+      ],
     },
     experience: {
       type: Number,
@@ -36,10 +34,10 @@ const teacherSchema = new mongoose.Schema(
     },
     email: {
       type: String,
-      required: [true, "Email kiritilishi shart"],
-      unique: true,
+      unique: true, // required: true ni olib tashladik, chunki u ixtiyoriy deb yozganmiz
       lowercase: true,
       trim: true,
+      sparse: true, // Agar email bo'sh kelsa, unique xatosi bermasligi uchun
     },
     phone: {
       type: String,
