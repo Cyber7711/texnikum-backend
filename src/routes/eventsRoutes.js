@@ -1,10 +1,3 @@
-const express = require("express");
-const router = express.Router();
-const eventsController = require("../controllers/eventsController");
-const findById = require("../middleware/findById");
-const Event = require("../models/event");
-const { protect } = require("../middleware/protect");
-
 /**
  * @swagger
  * tags:
@@ -113,10 +106,36 @@ const { protect } = require("../middleware/protect");
  *         description: Tadbir topilmadi
  */
 
-router.post("/", protect, eventsController.createEvent);
+const express = require("express");
+const router = express.Router();
+const eventsController = require("../controllers/eventsController");
+const validate = require("../middleware/validate"); // Zod middleware
+const {
+  eventSchema,
+  updateEventSchema,
+} = require("../validations/event.validation");
+const { protect } = require("../middleware/protect");
+
+// Swagger dokumentatsiyasi shu yerda qoladi...
+
+// 1. Yaratish: Avval loginni tekshir, keyin ma'lumotni Zod bilan filtrla
+router.post("/", protect, validate(eventSchema), eventsController.createEvent);
+
+// 2. Hammasini olish: Ochiq API
 router.get("/", eventsController.getAllEvent);
-router.get("/:id", findById(Event), eventsController.getEventById);
-router.put("/:id", protect, findById(Event), eventsController.updateEvent);
-router.delete("/:id", protect, findById(Event), eventsController.deleteEvent);
+
+// 3. ID bo'yicha olish:
+router.get("/:id", eventsController.getEventById);
+
+// 4. Yangilash: Login + Zod (optional maydonlar bilan)
+router.put(
+  "/:id",
+  protect,
+  validate(updateEventSchema),
+  eventsController.updateEvent,
+);
+
+// 5. O'chirish: Faqat login
+router.delete("/:id", protect, eventsController.deleteEvent);
 
 module.exports = router;

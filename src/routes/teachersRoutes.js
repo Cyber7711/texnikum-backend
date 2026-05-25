@@ -14,7 +14,7 @@ router.post(
   "/",
   protect,
   upload.single("photo"), // 'photo' nomi bilan kelishi tavsiya etiladi
-  teacherController.create
+  teacherController.create,
 );
 
 // O'qituvchi ma'lumotlarini yangilash

@@ -16,7 +16,10 @@ exports.createApplicant = catchAsync(async (req, res, next) => {
   if (existingApplicant) {
     // 400 xatosi: Foydalanuvchi aybi bilan bo'lgan xatolik
     return next(
-      new AppError("Bu telefon raqami orqali allaqachon ariza yuborilgan!", 400)
+      new AppError(
+        "Bu telefon raqami orqali allaqachon ariza yuborilgan!",
+        400,
+      ),
     );
   }
 

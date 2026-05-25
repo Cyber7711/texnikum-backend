@@ -43,3 +43,25 @@ module.exports = (err, req, res, next) => {
     message,
   });
 };
+
+const logger = require("../utils/logger");
+
+module.exports = (err, req, res, next) => {
+  err.statusCode = err.statusCode || 500;
+
+  if (err.statusCode === 500) {
+    logger.error("CRETICAL_SERVER_ERROR", {
+      message: err.message,
+      stack: err.stack,
+      path: req.originalUrl,
+      method: req.method,
+      ip: req.ip,
+    });
+  }
+
+  res.status(err.statusCode).json({
+    status: "fail",
+    message: err.message,
+    stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+  });
+};
