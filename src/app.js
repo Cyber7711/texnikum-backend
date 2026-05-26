@@ -40,6 +40,14 @@ app.use(compression());
 app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
 
+app.get("/api/v1/health", (req, res) => {
+  res.status(200).json({
+    status: "success",
+    message: "Server is alive and running smoothly!",
+    timestamp: new Date(),
+  });
+});
+
 // --- 3. DATA SECURITY (Sanitization) ---
 app.use(mongoSanitize()); // NoSQL Injection
 app.use(xssCleaner); // Cross-site Scripting
