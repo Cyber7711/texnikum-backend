@@ -5,9 +5,21 @@ const AppError = require("../utils/appError");
 
 exports.protect = async (req, res, next) => {
   try {
-    // 1. Tokenni cookie'dan olish
-    const accessToken = req.cookies?.access_token;
+    // 🚀 SENIOR FIX: Tokenni ham Authorization Header'dan, ham Cookie'dan qidiramiz
+    let accessToken;
 
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith("Bearer")
+    ) {
+      // Header'dan olish: "Bearer <token>" -> split orqali faqat tokenni ajratamiz
+      accessToken = req.headers.authorization.split(" ")[1];
+    } else if (req.cookies?.access_token) {
+      // Cookie'dan olish
+      accessToken = req.cookies.access_token;
+    }
+
+    // Agar ikkala joydan ham token topilmasa
     if (!accessToken) {
       return next(
         new AppError("Iltimos, amaliyotni bajarish uchun tizimga kiring.", 401),
@@ -30,7 +42,7 @@ exports.protect = async (req, res, next) => {
       );
     }
 
-    // 3. Bunday ID li foydalanuvchi haqiqatan ham bazada bormi? (Ehtimol o'chirib yuborilgan)
+    // 3. Bunday ID li foydalanuvchi haqiqatan ham bazada bormi?
     const admin = await Admin.findById(decoded.id);
     if (!admin) {
       return next(
