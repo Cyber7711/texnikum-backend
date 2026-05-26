@@ -20,9 +20,11 @@ router.post(
 
 // 🔒 Yopiq yo'laklar (Faqat Adminlar uchun)
 router.use(protect); // Pastdagi barcha marshrutlar uchun token talab qilinadi
-
+// List applicants (admin) - supports query: ?page=1&limit=20&q=search
 router.get("/", applicantController.getAllApplicants);
-// router.get("/:id", applicantController.getAllApplicants);
+
+// Get single applicant by ID (admin)
+router.get("/:id", applicantController.getApplicantById);
 
 // router.patch(
 //   "/:id",

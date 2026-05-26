@@ -24,17 +24,43 @@ const app = express();
 
 // --- 1. NETWORK SECURITY ---
 app.set("trust proxy", 1);
-app.use(helmet({ contentSecurityPolicy: false }));
+
+// Brauzer xavfsizlik sarlavhalari (Cross-Origin resurslarni o'qiy olishi uchun moslashtirilgan)
 app.use(
-  cors({
-    origin: (origin, cb) => {
-      // Sizning allowedOrigins mantiqingiz...
-      cb(null, true);
-    },
-    credentials: true,
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" },
   }),
 );
 
+// Ruxsat berilgan domenlar ro'yxati (oxirida slash '/' bo'lmasligi shart!)
+const allowedOrigins = [
+  "http://localhost:3000", // Nuxt / Next.js local development
+  "http://localhost:5173", // Vite / React local development
+  "https://texnikum3son.vercel.app", // 🚀 Sening haqiqiy production frontending
+];
+
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      // 1. Agar origin bo'lmasa (Server-to-server, Postman yoki health-check pinglar bo'lsa) ruxsat berish
+      // 2. Agar kelayotgan origin ruxsat etilganlar ro'yxatida bo'lsa, ruxsat berish
+      if (!origin || allowedOrigins.includes(origin)) {
+        return cb(null, true);
+      }
+
+      // Aks holda so'rovni xavfsizlik yuzasidan rad etish
+      return cb(
+        new AppError(
+          `CORS xatoligi: ${origin} manziliga ruxsat berilmagan`,
+          403,
+        ),
+      );
+    },
+    credentials: true, // Cookie va JWT tokenlar brauzer va server o'rtasida xavfsiz o'tishi uchun shart!
+  }),
+);
 // --- 2. PERFORMANCE & PARSING ---
 app.use(compression());
 app.use(express.json({ limit: "10mb" }));
